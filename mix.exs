@@ -44,11 +44,14 @@ defmodule Beeline.MixProject do
 
   defp deps do
     [
+      {:gen_stage, "~> 1.0"},
+      {:kelvin, "~> 0.3", optional: true},
+      {:volley, "~> 0.4", optional: true},
       # docs
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       # test
-      {:bless, "~> 1.0"},
-      {:convene, "~> 0.2", organization: "cuatro", only: [:dev, :test]},
+      {:bless, "~> 1.0", only: :test},
+      {:credo, "~> 1.0", only: :test},
       {:excoveralls, "~> 0.7", only: :test}
     ]
   end
@@ -58,7 +61,6 @@ defmodule Beeline.MixProject do
       name: "beeline",
       files: ~w(lib .formatter.exs mix.exs README.md .version),
       licenses: [],
-      organization: "cuatro",
       links: %{
         "GitHub" => @source_url,
         "Changelog" => @source_url <> "/blobs/main/CHANGELOG.md"
@@ -72,9 +74,6 @@ defmodule Beeline.MixProject do
 
   defp docs do
     [
-      # do you reference other projects in your documentation? if so, add
-      # them to the :deps key here. for an example, see
-      # https://github.com/NFIBrokerage/projection/blob/5f406872d00156e2b94cfa9fae8e92a1aa4c177b/mix.exs#L88-L90
       deps: [],
       extras: [
         "CHANGELOG.md"

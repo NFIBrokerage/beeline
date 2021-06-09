@@ -9,7 +9,10 @@ a tool for building in-order GenStage topologies for EventStoreDB
 ```elixir
 def deps do
   [
-    {:beeline, "~> 1.0", organization: "cuatro"}
+    {:beeline, "~> 0.1"},
+    # these are optional: add whichever adapter your project needs
+    {:kelvin, "~> 0.3"},
+    {:volley, "~> 0.4"}
   ]
 end
 ```
