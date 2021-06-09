@@ -171,7 +171,8 @@ defmodule Beeline do
       end
   """
   @doc since: "0.1.0"
-  @spec start_link(module :: module(), opts :: Keyword.t()) :: Supervisor.on_start()
+  @spec start_link(module :: module(), opts :: Keyword.t()) ::
+          Supervisor.on_start()
   def start_link(_module, opts) do
     NimbleOptions.validate!(opts, @schema)
   end
