@@ -60,7 +60,7 @@ defmodule Beeline.MixProject do
     [
       name: "beeline",
       files: ~w(lib .formatter.exs mix.exs README.md .version),
-      licenses: [],
+      licenses: ["Apache-2.0"],
       links: %{
         "GitHub" => @source_url,
         "Changelog" => @source_url <> "/blobs/main/CHANGELOG.md"
