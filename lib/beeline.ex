@@ -211,7 +211,12 @@ defmodule Beeline do
         raise ArgumentError, "invalid configuration given to Beeline.start_link/2," <> reason.message
 
       {:ok, opts} ->
-        Beeline.Topology.start_link(module, add_default_opts(opts))
+        opts =
+          opts
+          |> Keyword.put(:module, module)
+          |> add_default_opts()
+
+        Beeline.Topology.start_link(module, opts)
     end
   end
 
@@ -225,6 +230,12 @@ defmodule Beeline do
     get_stream_position = Application.fetch_env!(:beeline, :get_stream_position)
 
     [{:get_stream_position, get_stream_position} | opts]
+  end
+
+  def add_default_opt({:auto_subscribe?, nil}, opts, _all_opts) do
+    auto_subscribe? = Application.fetch_env!(:beeline, :auto_subscribe?)
+
+    [{:auto_subscribe?, auto_subscribe?} | opts]
   end
 
   def add_default_opt({:producers, producers}, opts, all_opts) do
@@ -247,6 +258,24 @@ defmodule Beeline do
   end
 
   def add_default_producer_opt({k, v}, opts, _index, _all_opts), do: [{k, v} | opts]
+
+  @doc """
+  Restarts the GenStage pipeline supervision tree for the given Beeline
+  topology
+
+  This can be useful for manual intervention by a human operator in a remote
+  console session, if the GenStage pipeline crashes and exceeds the retry
+  limits.
+
+  ## Examples
+
+      iex> Beeline.restart_pipeline(MyEventHandler)
+      :ok
+  """
+  @spec restart_pipeline(module()) :: :ok | {:error, term()}
+  def restart_pipeline(beeline) do
+    GenServer.call(beeline, :restart_pipeline)
+  end
 
   # coveralls-ignore-start
   @doc false

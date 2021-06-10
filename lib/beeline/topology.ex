@@ -18,26 +18,44 @@ defmodule Beeline.Topology do
     {:ok, %__MODULE__{supervisor_pid: supervisor_pid, config: opts}}
   end
 
-  def spawn_supervisor(opts) do
-    opts
-    |> children()
-    |> Supervisor.start_link(strategy: :one_for_one)
+  @impl GenServer
+  def handle_call(:restart_pipeline, _from, state) do
+    parent = = state.supervisor_pid
+    target = Module.concat(opts[:name], "PipelineSupervisor")
+    spec = PipelineSupervisor.child_spec(state.config)
+
+    result =
+      with :ok <- Supervisor.terminate_child(parent, target),
+           :ok <- Supervisor.delete_child(parent, target),
+           {:ok, _child} <- Supervisor.start_child(parent, spec) do
+        :ok
+      else
+        {:ok, _child, _info} ->
+          :ok
+
+        error ->
+          error
+      end
+
+    {:reply, result, state}
   end
 
-  def children(opts) do
-    health_checkers =
-      Enum.map(opts[:producers], fn producer ->
+  def spawn_supervisor(opts) do
+    children =
+      opts[:producers]
+      |> Enum.map(fn producer ->
         {HealthChecker.StreamPosition,
           event_listener: producer[:name],
           get_current_stream_position: get_stream_position(producer),
           get_latest_stream_position: get_latest_stream_position(producer)}
       end)
+      |> Kernel.++([{PipelineSupervisor, opts}])
 
-    health_checkers ++ [{PipelineSupervisor, opts}]
+    Supervisor.start_link(children, strategy: :one_for_one, name: Module.concat(opts[:name], Supervisor))
   end
 
-  @spec get_stream_position(Keyword.t()) :: (-> non_neg_integer | -1)
-  def get_stream_position(producer) do
+  @spec get_stream_position(Keyword.t()) :: (-> non_neg_integer() | -1)
+  defp get_stream_position(producer) do
     case producer[:get_stream_position] do
       {m, f, a} ->
         fn -> apply(m, f, [producer[:name] | a]) end
@@ -47,8 +65,8 @@ defmodule Beeline.Topology do
     end
   end
 
-  @spec get_latest_stream_position(Keyword.t()) :: (-> non_neg_integer | -1)
-  def get_latest_stream_position(producer) do
+  @spec get_latest_stream_position(Keyword.t()) :: (-> non_neg_integer() | -1)
+  defp get_latest_stream_position(producer) do
     fn ->
       Beeline.EventStoreDB.latest_event_number(
         producer[:adapter],
