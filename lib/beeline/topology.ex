@@ -3,7 +3,7 @@ defmodule Beeline.Topology do
 
   @behaviour GenServer
 
-  alias __MODULE__.{PipelineSupervisor}
+  alias __MODULE__.StageSupervisor
 
   defstruct [:supervisor_pid, :config]
 
@@ -19,10 +19,10 @@ defmodule Beeline.Topology do
   end
 
   @impl GenServer
-  def handle_call(:restart_pipeline, _from, state) do
+  def handle_call(:restart_stages, _from, state) do
     parent = state.supervisor_pid
-    target = Module.concat(state.config[:name], "PipelineSupervisor")
-    spec = PipelineSupervisor.child_spec(state.config)
+    target = Module.concat(state.config[:name], "StageSupervisor")
+    spec = StageSupervisor.child_spec(state.config)
 
     result =
       with :ok <- Supervisor.terminate_child(parent, target),
@@ -49,7 +49,7 @@ defmodule Beeline.Topology do
           get_current_stream_position: get_stream_position(producer),
           get_latest_stream_position: get_latest_stream_position(producer)}
       end)
-      |> Kernel.++([{PipelineSupervisor, opts}])
+      |> Kernel.++([{StageSupervisor, opts}])
 
     Supervisor.start_link(children, strategy: :one_for_one, name: Module.concat(opts[:name], Supervisor))
   end

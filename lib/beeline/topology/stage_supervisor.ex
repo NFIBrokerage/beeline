@@ -1,4 +1,4 @@
-defmodule Beeline.Topology.PipelineSupervisor do
+defmodule Beeline.Topology.StageSupervisor do
   @moduledoc false
   # a supervisor for the GenStage pipeline
 
@@ -16,7 +16,7 @@ defmodule Beeline.Topology.PipelineSupervisor do
     restart: :temporary
 
   def start_link(opts) do
-    Supervisor.start_link(__MODULE__, opts, name: Module.concat(opts[:name], PipelineSupervisor))
+    Supervisor.start_link(__MODULE__, opts, name: Module.concat(opts[:name], StageSupervisor))
   end
 
   @impl Supervisor
