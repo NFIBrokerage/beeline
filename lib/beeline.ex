@@ -39,7 +39,7 @@ defmodule Beeline do
   @schema [
     name: [
       doc: """
-      The GenServer name for the consumer. The topology will build on this
+      The GenServer name for the topology. The topology will build on this
       name, using it as a prefix.
       """,
       type: :atom
@@ -79,6 +79,14 @@ defmodule Beeline do
       beelines to use.
       """,
       type: {:or, [:mfa, {:fun, 1}]}
+    ],
+    context: [
+      doc: """
+      A user-defined data structure which is used as the initial state of
+      the GenStage consumer process.
+      """,
+      type: :any,
+      default: nil
     ]
   ]
 
@@ -131,8 +139,32 @@ defmodule Beeline do
   examples.
   """
 
+  defmacro __using__(_opts) do
+    quote do
+      use GenStage
+
+      @impl GenStage
+      def init(opts) do
+        producers =
+          opts
+          |> Keyword.fetch!(:producers)
+          |> Enum.map(fn {producer, _opts} -> producer end)
+
+        Enum.each(producers, fn producer ->
+          producer
+          |> GenServer.whereis()
+          |> Process.link()
+        end)
+
+        {:consumer, opts[:context], subscribe_to: [producers]}
+      end
+
+      defoverridable init: 1
+    end
+  end
+
   @doc """
-  starts a Beeline topology
+  Starts a Beeline topology
 
   ## Options
 
@@ -173,9 +205,48 @@ defmodule Beeline do
   @doc since: "0.1.0"
   @spec start_link(module :: module(), opts :: Keyword.t()) ::
           Supervisor.on_start()
-  def start_link(_module, opts) do
-    NimbleOptions.validate!(opts, @schema)
+  def start_link(module, opts) do
+    case NimbleOptions.validate(opts, @schema) do
+      {:error, reason} ->
+        raise ArgumentError, "invalid configuration given to Beeline.start_link/2," <> reason.message
+
+      {:ok, opts} ->
+        Beeline.Topology.start_link(module, add_default_opts(opts))
+    end
   end
+
+  @doc false
+  def add_default_opts(opts) do
+    Enum.reduce(opts, [], &add_default_opt(&1, &2, opts))
+  end
+
+  @doc false
+  def add_default_opt({:get_stream_position, nil}, opts, _all_opts) do
+    get_stream_position = Application.fetch_env!(:beeline, :get_stream_position)
+
+    [{:get_stream_position, get_stream_position} | opts]
+  end
+
+  def add_default_opt({:producers, producers}, opts, all_opts) do
+    producers =
+      producers
+      |> Enum.with_index()
+      |> Enum.map(fn {producer, index} ->
+        Enum.reduce(producer, [], &add_default_producer_opt(&1, &2, index, all_opts))
+      end)
+
+    [{:producers, producers} | opts]
+  end
+
+  def add_default_opt({k, v}, opts, _all_opts), do: [{k, v} | opts]
+
+  def add_default_producer_opt({:name, nil}, opts, index, all_opts) do
+    name = Module.concat(all_opts[:name], "Producer_#{index}")
+
+    [{:name, name} | opts]
+  end
+
+  def add_default_producer_opt({k, v}, opts, _index, _all_opts), do: [{k, v} | opts]
 
   # coveralls-ignore-start
   @doc false
