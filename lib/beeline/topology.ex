@@ -22,11 +22,13 @@ defmodule Beeline.Topology do
   def handle_call(:restart_stages, _from, state) do
     parent = state.supervisor_pid
     target = Module.concat(state.config[:name], "StageSupervisor")
-    spec = StageSupervisor.child_spec(state.config)
+    spec =
+      state.config
+      |> StageSupervisor.child_spec()
+      |> Supervisor.child_spec(id: StageSupervisor.name(state.config))
 
     result =
       with :ok <- Supervisor.terminate_child(parent, target),
-           :ok <- Supervisor.delete_child(parent, target),
            {:ok, _child} <- Supervisor.start_child(parent, spec) do
         :ok
       else
@@ -54,7 +56,9 @@ defmodule Beeline.Topology do
         []
       end
 
-    children = health_checkers ++ [{StageSupervisor, opts}]
+    children = health_checkers ++ [
+      Supervisor.child_spec({StageSupervisor, opts}, id: StageSupervisor.name(opts))
+    ]
 
     Supervisor.start_link(children,
       strategy: :one_for_one,

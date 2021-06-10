@@ -17,10 +17,16 @@ defmodule Beeline.Topology.StageSupervisor do
   use Supervisor,
     restart: :temporary
 
+  def name(opts) when is_list(opts) do
+    name(opts[:name])
+  end
+
+  def name(base_name) when is_atom(base_name) do
+    Module.concat(base_name, "StageSupervisor")
+  end
+
   def start_link(opts) do
-    Supervisor.start_link(__MODULE__, opts,
-      name: Module.concat(opts[:name], StageSupervisor)
-    )
+    Supervisor.start_link(__MODULE__, opts, name: name(opts))
   end
 
   @impl Supervisor
