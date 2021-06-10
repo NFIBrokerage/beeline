@@ -87,7 +87,8 @@ defmodule Beeline do
       This configuration can be used to set a blanket function for all
       beelines to use.
       """,
-      type: {:or, [:mfa, {:fun, 1}]}
+      type: {:or, [:mfa, {:fun, 1}]},
+      default: nil
     ],
     auto_subscribe?: [
       doc: """
@@ -97,7 +98,20 @@ defmodule Beeline do
       a default will be fetched with
       `Application.fetch_env!(:beeline, :auto_subscribe?)`.
       """,
-      type: {:or, [:mfa, {:fun, 1}]}
+      type: {:or, [:mfa, {:fun, 1}]},
+      default: nil
+    ],
+    spawn_health_checkers?: [
+      doc: """
+      Controls whether the topology should spawn the HealthChecker children.
+      It can be useful to disable this in `Mix.env() in [:dev, :test]` as the
+      health checker provides little or no value in those environments and
+      can produce many log lines. If this option is left blank, it will be
+      gotten from the application environment defaulting to `true` with
+      `Application.get_env(:beeline, :spawn_health_checkers?, true)`.
+      """,
+      type: {:or, [:boolean, {:in, [nil]}]},
+      default: nil
     ],
     context: [
       doc: """
@@ -165,17 +179,9 @@ defmodule Beeline do
       @impl GenStage
       def init(opts) do
         producers =
-          opts
-          |> Keyword.fetch!(:producers)
-          |> Enum.map(fn {_key, opts} -> opts[:name] end)
+          get_in(opts, [:producers, Access.all(), Access.elem(1), :name])
 
-        Enum.each(producers, fn producer ->
-          producer
-          |> GenServer.whereis()
-          |> Process.link()
-        end)
-
-        {:consumer, opts[:context], subscribe_to: [producers]}
+        {:consumer, opts[:context], subscribe_to: producers}
       end
 
       defoverridable init: 1
@@ -260,15 +266,25 @@ defmodule Beeline do
     [{:auto_subscribe?, auto_subscribe?} | acc]
   end
 
+  def add_default_opt({:spawn_health_checkers?, nil}, acc, _all_opts) do
+    spawn_health_checkers? =
+      Application.get_env(:beeline, :spawn_health_checkers?, true)
+
+    [{:spawn_health_checkers?, spawn_health_checkers?} | acc]
+  end
+
   def add_default_opt({:producers, producers}, acc, all_opts) do
     producers =
       producers
       |> Enum.map(fn {key, producer} ->
-        Enum.reduce(
-          producer,
-          [],
-          &add_default_producer_opt(&1, &2, key, all_opts)
-        )
+        producer =
+          Enum.reduce(
+            producer,
+            [],
+            &add_default_producer_opt(&1, &2, key, all_opts)
+          )
+
+        {key, producer}
       end)
 
     [{:producers, producers} | acc]

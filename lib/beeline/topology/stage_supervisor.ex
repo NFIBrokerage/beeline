@@ -12,6 +12,8 @@ defmodule Beeline.Topology.StageSupervisor do
   # the service to stay up-right and allows an operator to perform manual
   # intervention without adjusting the autosubscribe flag.
 
+  alias Beeline.Topology.{Producer, Consumer}
+
   use Supervisor,
     restart: :temporary
 
@@ -24,11 +26,21 @@ defmodule Beeline.Topology.StageSupervisor do
   @impl Supervisor
   def init(opts) do
     producer_specs =
-      Enum.map(opts[:producers], fn producer ->
-        {producer_module(opts[:adapter]), producer_opts(opts, producer)}
+      Enum.map(opts[:producers], fn {key, producer} ->
+        Supervisor.child_spec(
+          {producer_module(producer[:adapter]), producer_opts(opts, producer)},
+          id: {Producer, key}
+        )
       end)
 
-    children = producer_specs ++ [{opts[:module], consumer_opts(opts)}]
+    children = producer_specs ++ [
+      %{
+        id: opts[:module],
+        start: {Consumer, :start_link, [consumer_opts(opts)]},
+        restart: :permanent,
+        type: :worker
+      }
+    ]
 
     Supervisor.init(children, strategy: :one_for_all)
   end
@@ -59,6 +71,6 @@ defmodule Beeline.Topology.StageSupervisor do
   end
 
   defp consumer_opts(opts) do
-    Keyword.put(opts, :name, Module.concat(opts[:name], Consumer))
+    Keyword.merge(opts, name: Module.concat(opts[:name], Consumer))
   end
 end
