@@ -16,7 +16,9 @@ defmodule Beeline.Topology.StageSupervisor do
     restart: :temporary
 
   def start_link(opts) do
-    Supervisor.start_link(__MODULE__, opts, name: Module.concat(opts[:name], StageSupervisor))
+    Supervisor.start_link(__MODULE__, opts,
+      name: Module.concat(opts[:name], StageSupervisor)
+    )
   end
 
   @impl Supervisor

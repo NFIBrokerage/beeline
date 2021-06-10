@@ -53,7 +53,10 @@ defmodule Beeline do
       keys: [
         *: [
           type: :keyword_list,
-          keys: Enum.map(@producer_schema, fn {k, v} -> {k, put_in(v[:doc], false)} end)
+          keys:
+            Enum.map(@producer_schema, fn {k, v} ->
+              {k, put_in(v[:doc], false)}
+            end)
         ]
       ]
     ],
@@ -202,7 +205,8 @@ defmodule Beeline do
               default: [
                 name: MyEventHandler.EventListener,
                 stream_name: "$ce-BoundedContext.AggregateName",
-                connection: MyEventHandler.EventStoreDBConnection
+                connection: MyEventHandler.EventStoreDBConnection,
+                adapter: :kelvin
               ]
             ]
           )
@@ -224,7 +228,9 @@ defmodule Beeline do
   def start_link(module, opts) do
     case NimbleOptions.validate(opts, @schema) do
       {:error, reason} ->
-        raise ArgumentError, "invalid configuration given to Beeline.start_link/2," <> reason.message
+        raise ArgumentError,
+              "invalid configuration given to Beeline.start_link/2," <>
+                reason.message
 
       {:ok, opts} ->
         opts =
@@ -258,7 +264,11 @@ defmodule Beeline do
     producers =
       producers
       |> Enum.map(fn {key, producer} ->
-        Enum.reduce(producer, [], &add_default_producer_opt(&1, &2, key, all_opts))
+        Enum.reduce(
+          producer,
+          [],
+          &add_default_producer_opt(&1, &2, key, all_opts)
+        )
       end)
 
     [{:producers, producers} | acc]

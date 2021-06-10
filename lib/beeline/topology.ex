@@ -45,16 +45,19 @@ defmodule Beeline.Topology do
       opts[:producers]
       |> Enum.map(fn producer ->
         {HealthChecker.StreamPosition,
-          event_listener: producer[:name],
-          get_current_stream_position: get_stream_position(producer),
-          get_latest_stream_position: get_latest_stream_position(producer)}
+         event_listener: producer[:name],
+         get_current_stream_position: get_stream_position(producer),
+         get_latest_stream_position: get_latest_stream_position(producer)}
       end)
       |> Kernel.++([{StageSupervisor, opts}])
 
-    Supervisor.start_link(children, strategy: :one_for_one, name: Module.concat(opts[:name], Supervisor))
+    Supervisor.start_link(children,
+      strategy: :one_for_one,
+      name: Module.concat(opts[:name], Supervisor)
+    )
   end
 
-  @spec get_stream_position(Keyword.t()) :: (-> non_neg_integer() | -1)
+  @spec get_stream_position(Keyword.t()) :: (() -> non_neg_integer() | -1)
   defp get_stream_position(producer) do
     case producer[:get_stream_position] do
       {m, f, a} ->
@@ -65,7 +68,8 @@ defmodule Beeline.Topology do
     end
   end
 
-  @spec get_latest_stream_position(Keyword.t()) :: (-> non_neg_integer() | -1)
+  @spec get_latest_stream_position(Keyword.t()) ::
+          (() -> non_neg_integer() | -1)
   defp get_latest_stream_position(producer) do
     fn ->
       Beeline.EventStoreDB.latest_event_number(
