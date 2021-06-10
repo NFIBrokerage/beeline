@@ -32,7 +32,24 @@ defmodule Beeline do
       not provided, the name will be a formula of the name of the consumer
       and the key in the keyword list of producers.
       """,
-      type: :atom
+      type: :atom,
+      default: nil
+    ],
+    max_demand: [
+      doc: """
+      The maximum number of events the consumer is allowed to request from
+      this producer. This option can be configured to allow batch processing.
+      """,
+      type: :pos_integer,
+      default: 1
+    ],
+    min_demand: [
+      doc: """
+      The minimum number of events the consumer can request at a time from
+      this producer.
+      """,
+      type: :non_neg_integer,
+      default: 0
     ]
   ]
 
@@ -60,22 +77,6 @@ defmodule Beeline do
         ]
       ]
     ],
-    max_demand: [
-      doc: """
-      The maximum number of events this consumer is allowed to request from
-      any producer. This option can be configured to allow batch processing.
-      """,
-      type: :pos_integer,
-      default: 1
-    ],
-    min_demand: [
-      doc: """
-      The minimum number of events this consumer can request at a time from
-      a producer.
-      """,
-      type: :pos_integer,
-      default: 1
-    ],
     get_stream_position: [
       doc: """
       A function to invoke in order to get the stream position for a producer.
@@ -101,6 +102,14 @@ defmodule Beeline do
       type: {:or, [:mfa, {:fun, 1}]},
       default: nil
     ],
+    subscribe_after: [
+      doc: """
+      A period in msec after initialization when each producer should
+      query the `:auto_subscribe?` function.
+      """,
+      type: {:or, [:mfa, :non_neg_integer]},
+      default: {Enum, :random, [3_000..5_000]}
+    ],
     spawn_health_checkers?: [
       doc: """
       Controls whether the topology should spawn the HealthChecker children.
@@ -109,6 +118,17 @@ defmodule Beeline do
       can produce many log lines. If this option is left blank, it will be
       gotten from the application environment defaulting to `true` with
       `Application.get_env(:beeline, :spawn_health_checkers?, true)`.
+      """,
+      type: {:or, [:boolean, {:in, [nil]}]},
+      default: nil
+    ],
+    test_mode?: [
+      doc: """
+      Controls whether the topology should start up in test mode. In test
+      mode, any adapters set in producer specs are switched out with
+      the `:dummy` adapter. If this option is left blank, it will be
+      gotten from the application environment defaulting to `false` with
+      `Application.get_env(:beeline, :test_mode?, false)`.
       """,
       type: {:or, [:boolean, {:in, [nil]}]},
       default: nil
@@ -179,7 +199,10 @@ defmodule Beeline do
       @impl GenStage
       def init(opts) do
         producers =
-          get_in(opts, [:producers, Access.all(), Access.elem(1), :name])
+          Enum.map(opts[:producers], fn {_key, producer} ->
+            {producer[:name],
+             Keyword.take(producer, [:max_demand, :min_demand])}
+          end)
 
         {:consumer, opts[:context], subscribe_to: producers}
       end
@@ -254,11 +277,14 @@ defmodule Beeline do
   end
 
   @doc false
+  # coveralls-ignore-start
   def add_default_opt({:get_stream_position, nil}, acc, _all_opts) do
     get_stream_position = Application.fetch_env!(:beeline, :get_stream_position)
 
     [{:get_stream_position, get_stream_position} | acc]
   end
+
+  # coveralls-ignore-stop
 
   def add_default_opt({:auto_subscribe?, nil}, acc, _all_opts) do
     auto_subscribe? = Application.fetch_env!(:beeline, :auto_subscribe?)
@@ -271,6 +297,12 @@ defmodule Beeline do
       Application.get_env(:beeline, :spawn_health_checkers?, true)
 
     [{:spawn_health_checkers?, spawn_health_checkers?} | acc]
+  end
+
+  def add_default_opt({:test_mode?, nil}, acc, _all_opts) do
+    test_mode? = Application.get_env(:beeline, :test_mode?, false)
+
+    [{:test_mode?, test_mode?} | acc]
   end
 
   def add_default_opt({:producers, producers}, acc, all_opts) do
@@ -317,4 +349,90 @@ defmodule Beeline do
   def restart_stages(beeline) do
     GenServer.call(beeline, :restart_stages)
   end
+
+  @doc """
+  Decodes the body of a subscription event
+
+  This function performs JSON decoding if necessary and converts maps with
+  string keys into maps keyed by atoms. This This can potentially lead to
+  atom exhaustion, but the allowed atom count is quite high and usually this
+  concern is only theoretical.
+
+  ## Examples
+
+      @impl GenStage
+      def handle_events([subscription_event], _from, state) do
+        event = Beeline.decode_event(subscription_event)
+        # ..
+  """
+  defdelegate decode_event(subscription_event), to: Beeline.EventStoreDB
+
+  @doc """
+  Determines the stream position of the subscription event
+
+  This function prefers link stream positions if available. This means that if
+  the subscription from which the event is emitted is reading a projected
+  stream such as a category stream, the returned stream position will reflect
+  the position in the projected stream instead of the origin stream.
+
+  ## Examples
+
+      @impl GenStage
+      def handle_events([subscription_event], _from, state) do
+        # consume the events
+
+        MyApp.Repo.transaction(fn ->
+          # save some state
+
+          producer = Beeline.producer(subscription_event)
+          stream_position = Beeline.stream_position(subscription_event)
+          MyApp.StreamPosition.persist(producer, stream_position)
+        end)
+      end
+  """
+  defdelegate stream_position(subscription_event), to: Beeline.EventStoreDB
+
+  @doc """
+  Determines which producer emitted the subscription event
+
+  This can be useful in order to save stream positions when a consumer is
+  subscribed to multiple producers. Should be used in tandem with
+  `stream_position/1`.
+  """
+  defdelegate producer(subscription_event), to: Beeline.EventStoreDB
+
+  @doc """
+  Wraps an event in a subscription event packet
+
+  This can be useful for building test events to pass through the dummy
+  producer.
+  """
+  @spec as_subscription_event(map(), atom()) :: {atom(), map()}
+  def as_subscription_event(event, producer) do
+    {producer, %{event: %{data: Jason.encode!(event), event_number: 0}}}
+  end
+
+  @doc """
+  Gives a set of events to a topology's dummy producer
+
+  This function can be used to test running events through a topology.
+  If there are multiple producers, one is picked at random.
+  """
+  def test_events(events, beeline) do
+    GenServer.call(beeline, {:test_events, events})
+  end
+
+  @doc """
+  Returns the name of the consumer process given a beeline topology name
+
+  The consumer name is simply the concatenation of the topology's GenServer
+  name with "Consumer"
+
+  ## Examples
+
+      iex> Beeline.consumer(MyEventHandler)
+      MyEventHandler.Consumer
+  """
+  @spec consumer(module()) :: module()
+  def consumer(beeline), do: Module.concat(beeline, "Consumer")
 end

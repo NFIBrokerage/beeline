@@ -34,40 +34,48 @@ defmodule Beeline.Topology.StageSupervisor do
     producer_specs =
       Enum.map(opts[:producers], fn {key, producer} ->
         Supervisor.child_spec(
-          {producer_module(producer[:adapter]), producer_opts(opts, producer)},
+          {producer_module(producer[:adapter], opts[:test_mode?]),
+           producer_opts(opts, producer)},
           id: {Producer, key}
         )
       end)
 
-    children = producer_specs ++ [
-      %{
-        id: opts[:module],
-        start: {Consumer, :start_link, [consumer_opts(opts)]},
-        restart: :permanent,
-        type: :worker
-      }
-    ]
+    children =
+      producer_specs ++
+        [
+          %{
+            id: opts[:module],
+            start: {Consumer, :start_link, [consumer_opts(opts)]},
+            restart: :permanent,
+            type: :worker
+          }
+        ]
 
     Supervisor.init(children, strategy: :one_for_all)
   end
 
-  defp producer_module(:kelvin), do: Kelvin.InOrderSubscription
-  defp producer_module(:volley), do: Volley.InOrderSubscription
-  defp producer_module(:dummy), do: Beeline.DummyProducer
+  defp producer_module(_, true = _test_mode?), do: Beeline.DummyProducer
+  defp producer_module(:kelvin, _), do: Kelvin.InOrderSubscription
+  defp producer_module(:volley, _), do: Volley.InOrderSubscription
+  defp producer_module(:dummy, _), do: Beeline.DummyProducer
 
   defp producer_opts(opts, producer) do
     [
       name: producer[:name],
       stream_name: producer[:stream_name],
       connection: producer[:connection],
-      restore_stream_position!:
-        wrap_function(opts[:get_stream_position], producer[:name]),
+      restore_stream_position!: get_stream_position(opts, producer),
       subscribe_on_init?:
         wrap_function(opts[:auto_subscribe?], producer[:name]),
-      subscribe_after: Enum.random(3_000..5_000)
+      subscribe_after:
+        if(opts[:test_mode?],
+          do: 0,
+          else: subscribe_after(opts[:subscribe_after])
+        )
     ]
   end
 
+  # coveralls-ignore-start
   defp wrap_function({m, f, a}, producer_name) do
     fn -> apply(m, f, [producer_name | a]) end
   end
@@ -76,7 +84,41 @@ defmodule Beeline.Topology.StageSupervisor do
     fn -> function.(producer_name) end
   end
 
+  @spec get_stream_position(Keyword.t(), Keyword.t()) ::
+          (() -> non_neg_integer() | -1 | :start)
+  defp get_stream_position(opts, producer) do
+    case opts[:get_stream_position] do
+      {m, f, a} ->
+        fn ->
+          apply(m, f, [producer[:name] | a])
+          |> default_stream_position(producer[:adapter])
+        end
+
+      function when is_function(function, 1) ->
+        fn ->
+          function.(producer[:name])
+          |> default_stream_position(producer[:adapter])
+        end
+
+      nil ->
+        raise ArgumentError,
+          message:
+            "could not determine the " <>
+              "`:get_stream_position` function for Beeline #{inspect(opts[:name])}"
+    end
+  end
+
+  # defaults the uninitialized stream position to :start for the :volley
+  # adapter, as spear cannot interperet a -1 stream position
+  defp default_stream_position(-1, :volley), do: :start
+  defp default_stream_position(position, _adapter), do: position
+
+  defp subscribe_after({m, f, a}), do: apply(m, f, a)
+  defp subscribe_after(interval) when is_integer(interval), do: interval
+
+  # coveralls-ignore-stop
+
   defp consumer_opts(opts) do
-    Keyword.merge(opts, name: Module.concat(opts[:name], Consumer))
+    Keyword.merge(opts, name: Beeline.consumer(opts[:name]))
   end
 end

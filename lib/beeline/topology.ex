@@ -22,11 +22,13 @@ defmodule Beeline.Topology do
   def handle_call(:restart_stages, _from, state) do
     parent = state.supervisor_pid
     target = Module.concat(state.config[:name], "StageSupervisor")
+
     spec =
       state.config
       |> StageSupervisor.child_spec()
       |> Supervisor.child_spec(id: StageSupervisor.name(state.config))
 
+    # coveralls-ignore-start
     result =
       with :ok <- Supervisor.terminate_child(parent, target),
            {:ok, _child} <- Supervisor.start_child(parent, spec) do
@@ -39,7 +41,22 @@ defmodule Beeline.Topology do
           error
       end
 
+    # coveralls-ignore-stop
+
     {:reply, result, state}
+  end
+
+  def handle_call({:test_events, events}, _from, state) do
+    producer =
+      state.config
+      |> get_in([:producers, Access.all(), Access.elem(1), :name])
+      |> Enum.random()
+
+    events = Enum.map(events, &Beeline.as_subscription_event(&1, producer))
+
+    GenServer.cast(producer, {:events, events})
+
+    {:reply, :ok, state}
   end
 
   def spawn_supervisor(opts) do
@@ -49,16 +66,20 @@ defmodule Beeline.Topology do
         |> Enum.map(fn {_key, producer} ->
           {HealthChecker.StreamPosition,
            event_listener: producer[:name],
-           get_current_stream_position: get_stream_position(producer, opts),
+           get_current_stream_position: get_stream_position(opts, producer),
            get_latest_stream_position: get_latest_stream_position(producer)}
         end)
       else
         []
       end
 
-    children = health_checkers ++ [
-      Supervisor.child_spec({StageSupervisor, opts}, id: StageSupervisor.name(opts))
-    ]
+    children =
+      health_checkers ++
+        [
+          Supervisor.child_spec({StageSupervisor, opts},
+            id: StageSupervisor.name(opts)
+          )
+        ]
 
     Supervisor.start_link(children,
       strategy: :one_for_one,
@@ -66,31 +87,26 @@ defmodule Beeline.Topology do
     )
   end
 
-  @spec get_stream_position(Keyword.t(), Keyword.t()) :: (() -> non_neg_integer() | -1)
-  defp get_stream_position(producer, opts) do
+  @spec get_stream_position(Keyword.t(), Keyword.t()) ::
+          (() -> non_neg_integer() | -1)
+  defp get_stream_position(opts, producer) do
     case opts[:get_stream_position] do
       {m, f, a} ->
-        fn ->
-          apply(m, f, [producer[:name] | a])
-          |> default_stream_position(producer[:adapter])
-        end
+        fn -> apply(m, f, [producer[:name] | a]) end
 
+      # coveralls-ignore-start
       function when is_function(function, 1) ->
-        fn ->
-          function.(producer[:name])
-          |> default_stream_position(producer[:adapter])
-        end
+        fn -> function.(producer[:name]) end
 
       nil ->
-        raise ArgumentError, message: "could not determine the " <>
-          "`:get_stream_position` function for Beeline #{inspect(opts[:name])}"
+        raise ArgumentError,
+          message:
+            "could not determine the " <>
+              "`:get_stream_position` function for Beeline #{inspect(opts[:name])}"
+
+        # coveralls-ignore-stop
     end
   end
-
-  # defaults the uninitialized stream position to :start for the :spear
-  # adapter, as spear cannot interperet a -1 stream position
-  defp default_stream_position(-1, :spear), do: :start
-  defp default_stream_position(position, _adapter), do: position
 
   @spec get_latest_stream_position(Keyword.t()) ::
           (() -> non_neg_integer() | -1)
