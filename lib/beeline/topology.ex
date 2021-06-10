@@ -7,12 +7,12 @@ defmodule Beeline.Topology do
 
   defstruct [:supervisor_pid, :config]
 
-  def start_link(module, opts) do
-    GenServer.start_link(__MODULE__, {module, opts}, Keyword.take(opts, [:name]))
+  def start_link(opts) do
+    GenServer.start_link(__MODULE__, opts, Keyword.take(opts, [:name]))
   end
 
   @impl GenServer
-  def init({module, opts}) do
+  def init(opts) do
     {:ok, supervisor_pid} = spawn_supervisor(opts)
 
     {:ok, %__MODULE__{supervisor_pid: supervisor_pid, config: opts}}
@@ -20,8 +20,8 @@ defmodule Beeline.Topology do
 
   @impl GenServer
   def handle_call(:restart_pipeline, _from, state) do
-    parent = = state.supervisor_pid
-    target = Module.concat(opts[:name], "PipelineSupervisor")
+    parent = state.supervisor_pid
+    target = Module.concat(state.config[:name], "PipelineSupervisor")
     spec = PipelineSupervisor.child_spec(state.config)
 
     result =

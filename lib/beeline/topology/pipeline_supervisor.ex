@@ -40,10 +40,20 @@ defmodule Beeline.Topology.PipelineSupervisor do
       name: producer[:name],
       stream_name: producer[:stream_name],
       connection: producer[:connection],
-      restore_stream_position!: opts[:get_stream_position],
-      subscribe_on_init?: opts[:subscribe_on_init?],
-      subscribe_after: opts[:subscribe_after]
+      restore_stream_position!:
+        wrap_function(opts[:get_stream_position], producer[:name]),
+      subscribe_on_init?:
+        wrap_function(opts[:auto_subscribe?], producer[:name]),
+      subscribe_after: Enum.random(3_000..5_000)
     ]
+  end
+
+  defp wrap_function({m, f, a}, producer_name) do
+    fn -> apply(m, f, [producer_name | a]) end
+  end
+
+  defp wrap_function(function, producer_name) when is_function(function, 1) do
+    fn -> function.(producer_name) end
   end
 
   defp consumer_opts(opts) do

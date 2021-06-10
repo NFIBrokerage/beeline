@@ -80,6 +80,16 @@ defmodule Beeline do
       """,
       type: {:or, [:mfa, {:fun, 1}]}
     ],
+    auto_subscribe?: [
+      doc: """
+      A function to invoke to determine whether each producer should
+      subscribe to events as it starts up. The argument passed is the
+      GenServer name of the producer. If this option is not provided,
+      a default will be fetched with
+      `Application.fetch_env!(:beeline, :auto_subscribe?)`.
+      """,
+      type: {:or, [:mfa, {:fun, 1}]}
+    ],
     context: [
       doc: """
       A user-defined data structure which is used as the initial state of
@@ -216,7 +226,7 @@ defmodule Beeline do
           |> Keyword.put(:module, module)
           |> add_default_opts()
 
-        Beeline.Topology.start_link(module, opts)
+        Beeline.Topology.start_link(opts)
     end
   end
 
