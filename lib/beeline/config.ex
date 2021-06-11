@@ -55,7 +55,7 @@ defmodule Beeline.Config do
       A period in msec after initialization when each producer should
       query the `:auto_subscribe?` function.
       """,
-      type: {:or, [:mfa, :non_neg_integer, {:fun, 0}]},
+      type: {:or, [:mfa, {:fun, 0}, :non_neg_integer]},
       default: {Enum, :random, [3_000..5_000]}
     ],
     spawn_health_checkers?: [
