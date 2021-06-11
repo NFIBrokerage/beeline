@@ -2,6 +2,35 @@ defmodule Beeline.HealthChecker do
   @moduledoc """
   A GenServer which periodically polls a producer's stream positions and
   process
+
+  This GenServer emits `:telemetry` measurements which serve as an interface
+  for exporting this health-check information to an external monitoring
+  service.
+
+  ## Telemetry
+
+  * `[:beeline, :health_check, :stop]` - dispatched by each HealthChecker
+    process after polling the producer's position and process information
+      * Measurement: `%{duration: native_time}` - the time taken to perform
+        the position and process checks
+      * Metadata, a map with the following keys:
+          * `:producer` (module) - the producer module being measured
+          * `:alive?` (boolean) - whether the producer process is alive
+          * `:stream_name` (string) - the EventStoreDB stream name from which
+            the producer reads
+          * `:hostname` (string) - the hostname of the machine on which
+            the health checker process is being run
+          * `:interval` (integer) - the milliseconds the health checker process
+            has waited (minus drift) since the last poll
+          * `:drift` (integer) - the milliseconds used for drifting the interval
+            for the last poll
+          * `:measurement_time` (UTC datetime) - the time when the poll started
+          * `:prior_position` (integer) - the `:current_position` from the last
+            poll
+          * `:current_position` (integer) - the current stream position of
+            the producer
+          * `:head_position` (integer) - the stream position of the head
+            (the latest event) of the EventStoreDB stream
   """
 
   @behaviour GenServer
@@ -19,6 +48,7 @@ defmodule Beeline.HealthChecker do
     current_position: -1
   ]
 
+  @doc false
   def child_spec({config, key, producer}) do
     %{
       id: {__MODULE__, key},
@@ -28,6 +58,7 @@ defmodule Beeline.HealthChecker do
     }
   end
 
+  @doc false
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts)
   end
@@ -37,6 +68,7 @@ defmodule Beeline.HealthChecker do
     state =
       %__MODULE__{
         producer: producer.name,
+        stream_name: producer.stream_name,
         get_head_position: fn ->
           Beeline.EventStoreDB.latest_event_number(
             producer.adapter,
@@ -44,7 +76,6 @@ defmodule Beeline.HealthChecker do
             producer.stream_name
           )
         end,
-        stream_name: producer.stream_name,
         get_stream_position:
           wrap_function(config.get_stream_position, producer.name),
         interval_fn: wrap_function(config.health_check_interval),
