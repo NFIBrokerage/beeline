@@ -47,7 +47,7 @@ defmodule Beeline.MixProject do
       {:gen_stage, "~> 1.0"},
       {:nimble_options, "~> 0.1"},
       {:jason, "~> 1.0"},
-      {:health_checker, "~> 2.2", organization: "cuatro"},
+      {:telemetry, "~> 0.4"},
       {:kelvin, "~> 0.4", optional: true},
       {:volley, "~> 0.4", optional: true},
       # docs
