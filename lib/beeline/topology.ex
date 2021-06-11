@@ -23,16 +23,11 @@ defmodule Beeline.Topology do
   @impl GenServer
   def handle_call(:restart_stages, _from, state) do
     parent = state.supervisor_pid
-    target = Module.concat(state.config.name, "StageSupervisor")
-
-    spec =
-      state.config
-      |> StageSupervisor.child_spec()
-      |> Supervisor.child_spec(id: StageSupervisor.name(state.config))
+    spec = StageSupervisor.child_spec(state.config)
 
     # coveralls-ignore-start
     result =
-      with :ok <- Supervisor.terminate_child(parent, target),
+      with :ok <- Supervisor.terminate_child(parent, StageSupervisor),
            {:ok, _child} <- Supervisor.start_child(parent, spec) do
         :ok
       else
@@ -71,13 +66,7 @@ defmodule Beeline.Topology do
         []
       end
 
-    children =
-      health_checkers ++
-        [
-          Supervisor.child_spec({StageSupervisor, config},
-            id: StageSupervisor.name(config)
-          )
-        ]
+    children = health_checkers ++ [StageSupervisor.child_spec(config)]
 
     Supervisor.start_link(children,
       strategy: :one_for_one,
