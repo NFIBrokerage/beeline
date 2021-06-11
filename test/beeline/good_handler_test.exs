@@ -65,8 +65,8 @@ defmodule Beeline.GoodHandlerTest do
       spawn(fn -> check_position(GoodHandler.Producer_grpc, 3, self_pid) end)
       spawn(fn -> check_position(GoodHandler.Producer_tcp, 3, self_pid) end)
 
-      assert_receive {:done, GoodHandler.Producer_grpc}, 5000
-      assert_receive {:done, GoodHandler.Producer_tcp}, 5000
+      assert_receive {:done, GoodHandler.Producer_grpc}, 2000
+      assert_receive {:done, GoodHandler.Producer_tcp}, 2000
 
       assert GoodHandler.get_stream_position(GoodHandler.Producer_grpc) == 2
       assert GoodHandler.get_stream_position(GoodHandler.Producer_tcp) == 2
@@ -81,7 +81,7 @@ defmodule Beeline.GoodHandlerTest do
                         head_position: 2,
                         producer: GoodHandler.Producer_tcp
                       }},
-                     5_000
+                     2_000
 
       assert_receive {:health_check, _event, _measurements,
                       %{
@@ -89,7 +89,7 @@ defmodule Beeline.GoodHandlerTest do
                         head_position: 2,
                         producer: GoodHandler.Producer_grpc
                       }},
-                     5_000
+                     2_000
     end
   end
 
