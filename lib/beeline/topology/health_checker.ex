@@ -10,6 +10,7 @@ defmodule Beeline.Topology.HealthChecker do
     :producer,
     :interval,
     :get_stream_position,
+    :get_head_position,
     :hostname,
     drift: 0,
     current_position: -1
@@ -81,9 +82,11 @@ defmodule Beeline.Topology.HealthChecker do
       [:beeline, :health_check],
       metadata,
       fn ->
+        current_position = state.get_stream_position.()
+
         metadata =
           Map.merge(metadata, %{
-            current_position: state.get_stream_position.(),
+            current_position: current_position,
             head_position: state.get_head_position.(),
             alive?: alive?(state.producer)
           })
