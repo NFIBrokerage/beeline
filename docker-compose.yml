@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  eventstoredb20:
+    image: eventstore/eventstore:21.2.0-buster-slim
+    command: /opt/eventstore/eventstored --insecure --run-projections=All
+    ports:
+    - 2113:2113
+
+  eventstoredb5:
+    image: eventstore/eventstore:release-5.0.10
+    environment:
+      EVENTSTORE_START_STANDARD_PROJECTIONS: "True"
+      EVENTSTORE_RUN_PROJECTIONS: "All"
+    ports:
+    - 1113:1113
+
+  app:
+    image: elixir:1.12.1
+    depends_on:
+    - eventstoredb20
+    - eventstoredb5
+    environment:
+    - 'ERL_AFLAGS=-kernel shell_history enabled'
+    - EVENTSTORE_GRPC_HOST=eventstoredb20
+    - EVENTSTORE_TCP_HOST=eventstoredb5
+    volumes:
+    - ./:/app
+    working_dir: /app
+    command: tail -f /dev/null

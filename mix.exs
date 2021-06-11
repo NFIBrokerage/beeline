@@ -46,7 +46,9 @@ defmodule Beeline.MixProject do
     [
       {:gen_stage, "~> 1.0"},
       {:nimble_options, "~> 0.1"},
-      {:kelvin, "~> 0.3", optional: true},
+      {:jason, "~> 1.0"},
+      {:telemetry, "~> 0.4"},
+      {:kelvin, "~> 0.4", optional: true},
       {:volley, "~> 0.4", optional: true},
       # docs
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},

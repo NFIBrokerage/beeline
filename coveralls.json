@@ -3,6 +3,9 @@
     "minimum_coverage": 100,
     "treat_no_relevant_lines_as_covered" : true
   },
+  "terminal_options": {
+    "file_column_width": 60
+  },
   "skip_files": [
     "^test",
     "^deps"

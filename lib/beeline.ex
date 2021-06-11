@@ -1,86 +1,6 @@
 defmodule Beeline do
-  @producer_schema [
-    adapter: [
-      doc: """
-      The adapter module to use for creating the producer. Use `:kelvin` for
-      EventStoreDB v3-5, `:volley` for EventStoreDB v20+, and `:dummy` for
-      test cases.
-      """,
-      type: {:in, [:kelvin, :volley, :dummy]},
-      required: true
-    ],
-    stream_name: [
-      doc: """
-      The name of the EventStoreDB stream to which this producer should
-      subscribe for events.
-      """,
-      type: :string,
-      required: true
-    ],
-    connection: [
-      doc: """
-      The module to use as a connection to form the subscription. When the
-      `:adapter` option is `:kelvin`, this should be an Extreme client module.
-      When the adapter is `:volley`, it should be a `Spear.Client` module.
-      """,
-      type: :atom,
-      required: true
-    ],
-    name: [
-      doc: """
-      The full GenServer name to use for this producer. When this option is
-      not provided, the name will be a formula of the name of the consumer
-      and the index in the list of producers.
-      """,
-      type: :atom
-    ]
-  ]
-
-  @schema [
-    name: [
-      doc: """
-      The GenServer name for the consumer. The topology will build on this
-      name, using it as a prefix.
-      """,
-      type: :atom
-    ],
-    producers: [
-      doc: """
-      A list of producers to which the consumer should subscribe. See the
-      "producer options" section below for the schema.
-      """,
-      type: {:list, {:custom, __MODULE__, :validate_schema, [@producer_schema]}}
-    ],
-    max_demand: [
-      doc: """
-      The maximum number of events this consumer is allowed to request from
-      any producer. This option can be configured to allow batch processing.
-      """,
-      type: :pos_integer,
-      default: 1
-    ],
-    min_demand: [
-      doc: """
-      The minimum number of events this consumer can request at a time from
-      a producer.
-      """,
-      type: :pos_integer,
-      default: 1
-    ],
-    get_stream_position: [
-      doc: """
-      A function to invoke in order to get the stream position for a producer.
-      This function should be a 1-arity function (anonymous or capture) where
-      the name of the producer is passed as the argument. This option may also
-      be passed as an MFA tuple where the producer name will be prepended to
-      the argument list. If this option is not provided, a default will be
-      fetched with `Application.fetch_env!(:beeline, :get_stream_position)`.
-      This configuration can be used to set a blanket function for all
-      beelines to use.
-      """,
-      type: {:or, [:mfa, {:fun, 1}]}
-    ]
-  ]
+  @schema Beeline.Config.schema()
+  @producer_schema Beeline.Producer.schema()
 
   @moduledoc """
   A tool for building in-order GenStage topologies for EventStoreDB
@@ -99,7 +19,7 @@ defmodule Beeline do
 
   ```text
   Supervisor
-  ├── HealthChecker
+  ├── HealthChecker*
   └── StageSupervisor
       ├── Producer*
       └── Consumer
@@ -107,14 +27,14 @@ defmodule Beeline do
 
   Let's break these down from the bottom up:
 
-  * `Consumer` - the GenStage consumer module which invokes
+  * "Consumer" - the GenStage consumer module which invokes
     `Beeline.start_link/2`, handles events, and increments stream
     positions.
-  * `Producer*` - one or more GenStage producers which feed the consumer.
+  * "Producer*" - one or more GenStage producers which feed the consumer.
     These producers are declared with the `:producers` key and may either
     be `Kelvin.InOrderSubscription`, `Volley.InOrderSubscription`, or
     `Beeline.DummyProducer` producer modules.
-  * `StageSupervisor` - a supervisor for the GenStage pipeline. This supervisor
+  * "StageSupervisor" - a supervisor for the GenStage pipeline. This supervisor
     has a `:transient` restart strategy so that if the GenStage pipeline halts
     on an event it cannot handle, the `StageSupervisor` supervision tree is
     brought down but not the entire supervision tree. This behavior is
@@ -122,17 +42,36 @@ defmodule Beeline do
     stream positions and so that an operator can perform any necessary
     manual intervention on the crashed supervision tree (for example,
     skipping the failure event).
-  * `HealthChecker` - a GenServer which periodically polls the stream positions
-    of all producers in the topology.
-  * `Supervisor` - a top-level supervisor. This supervisor has a `:permanent`
+  * "HealthChecker*" - a GenServer which periodically polls the stream positions
+    of a producer. There is one health checker process per producer.
+  * "Supervisor" - a top-level supervisor. This supervisor has a `:permanent`
     restart strategy.
 
   See the `start_link/2` documentation for a full configuration reference and
   examples.
   """
 
+  defmacro __using__(_opts) do
+    quote do
+      use GenStage
+
+      @impl GenStage
+      def init(config) do
+        producers =
+          Enum.map(config.producers, fn {_key, producer} ->
+            {producer.name,
+             min_demand: producer.min_demand, max_demand: producer.max_demand}
+          end)
+
+        {:consumer, config.context, subscribe_to: producers}
+      end
+
+      defoverridable init: 1
+    end
+  end
+
   @doc """
-  starts a Beeline topology
+  Starts a Beeline topology
 
   ## Options
 
@@ -151,10 +90,11 @@ defmodule Beeline do
           Beeline.start_link(MyEventHandler,
             name: MyEventHandler,
             producers: [
-              [
+              default: [
                 name: MyEventHandler.EventListener,
                 stream_name: "$ce-BoundedContext.AggregateName",
-                connection: MyEventHandler.EventStoreDBConnection
+                connection: MyEventHandler.EventStoreDBConnection,
+                adapter: :kelvin
               ]
             ]
           )
@@ -173,17 +113,111 @@ defmodule Beeline do
   @doc since: "0.1.0"
   @spec start_link(module :: module(), opts :: Keyword.t()) ::
           Supervisor.on_start()
-  def start_link(_module, opts) do
-    NimbleOptions.validate!(opts, @schema)
-  end
+  def start_link(module, opts) do
+    case NimbleOptions.validate(opts, @schema) do
+      {:error, reason} ->
+        raise ArgumentError,
+              "invalid configuration given to Beeline.start_link/2," <>
+                reason.message
 
-  # coveralls-ignore-start
-  @doc false
-  def validate_schema(opts, schema) do
-    with {:error, reason} <- NimbleOptions.validate(opts, schema) do
-      {:error, reason.message}
+      {:ok, opts} ->
+        opts
+        |> Keyword.put(:module, module)
+        |> Beeline.Config.source()
+        |> Beeline.Topology.start_link()
     end
   end
 
-  # coveralls-ignore-stop
+  @doc """
+  Restarts the supervision tree of GenStages for the given Beeline topology
+
+  This can be useful for manual intervention by a human operator in a remote
+  console session, if the GenStage supervision tree crashes and exceeds the
+  retry limits.
+
+  ## Examples
+
+      iex> Beeline.restart_stages(MyEventHandler)
+      :ok
+  """
+  @spec restart_stages(module()) :: :ok | {:error, term()}
+  def restart_stages(beeline) when is_atom(beeline) do
+    beeline
+    |> Module.concat(Topology)
+    |> GenServer.call(:restart_stages)
+  end
+
+  @doc """
+  Decodes the body of a subscription event
+
+  This function performs JSON decoding if necessary and converts maps with
+  string keys into maps keyed by atoms. This This can potentially lead to
+  atom exhaustion, but the allowed atom count is quite high and usually this
+  concern is only theoretical.
+
+  ## Examples
+
+      @impl GenStage
+      def handle_events([subscription_event], _from, state) do
+        event = Beeline.decode_event(subscription_event)
+        # ..
+  """
+  defdelegate decode_event(subscription_event), to: Beeline.EventStoreDB
+
+  @doc """
+  Determines the stream position of the subscription event
+
+  This function prefers link stream positions if available. This means that if
+  the subscription from which the event is emitted is reading a projected
+  stream such as a category stream, the returned stream position will reflect
+  the position in the projected stream instead of the origin stream.
+
+  ## Examples
+
+      @impl GenStage
+      def handle_events([subscription_event], _from, state) do
+        # consume the events
+
+        MyApp.Repo.transaction(fn ->
+          # save some state
+
+          producer = Beeline.producer(subscription_event)
+          stream_position = Beeline.stream_position(subscription_event)
+          MyApp.StreamPosition.persist(producer, stream_position)
+        end)
+      end
+  """
+  defdelegate stream_position(subscription_event), to: Beeline.EventStoreDB
+
+  @doc """
+  Determines which producer emitted the subscription event
+
+  This can be useful in order to save stream positions when a consumer is
+  subscribed to multiple producers. Should be used in tandem with
+  `stream_position/1`.
+  """
+  defdelegate producer(subscription_event), to: Beeline.EventStoreDB
+
+  @doc """
+  Wraps an event in a subscription event packet
+
+  This can be useful for building test events to pass through the dummy
+  producer.
+  """
+  @spec as_subscription_event(map(), atom()) :: {atom(), map()}
+  def as_subscription_event(event, producer) do
+    {producer, %{event: %{data: Jason.encode!(event), event_number: 0}}}
+  end
+
+  @doc """
+  Gives a set of events to a topology's dummy producer
+
+  This function can be used to test running events through a topology.
+  If there are multiple producers, one is picked at random.
+  """
+  def test_events(events, beeline) when is_atom(beeline) do
+    beeline
+    |> Module.concat(Topology)
+    |> GenServer.call({:test_events, events})
+  end
 end
