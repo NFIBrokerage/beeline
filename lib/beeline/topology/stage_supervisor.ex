@@ -12,10 +12,18 @@ defmodule Beeline.Topology.StageSupervisor do
   # the service to stay up-right and allows an operator to perform manual
   # intervention without adjusting the autosubscribe flag.
 
+  @behaviour Supervisor
+
   alias Beeline.Topology.{Producer, Consumer}
 
-  use Supervisor,
-    restart: :temporary
+  def child_spec(config) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [config]},
+      restart: :temporary,
+      type: :supervisor
+    }
+  end
 
   def name(%Beeline.Config{name: name}) do
     name(name)

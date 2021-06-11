@@ -1,17 +1,20 @@
-defmodule Beeline.Topology.HealthChecker do
-  @moduledoc false
-
-  # a GenServer which periodically polls a producer's stream positions and
-  # process
+defmodule Beeline.HealthChecker do
+  @moduledoc """
+  A GenServer which periodically polls a producer's stream positions and
+  process
+  """
 
   @behaviour GenServer
 
   defstruct [
     :producer,
-    :interval,
+    :stream_name,
+    :interval_fn,
+    :drift_fn,
     :get_stream_position,
     :get_head_position,
     :hostname,
+    interval: 0,
     drift: 0,
     current_position: -1
   ]
@@ -41,8 +44,11 @@ defmodule Beeline.Topology.HealthChecker do
             producer.stream_name
           )
         end,
-        get_stream_position: config.get_stream_position,
-        interval: config.health_check_interval,
+        stream_name: producer.stream_name,
+        get_stream_position:
+          wrap_function(config.get_stream_position, producer.name),
+        interval_fn: wrap_function(config.health_check_interval),
+        drift_fn: wrap_function(config.health_check_drift),
         hostname: hostname()
       }
       |> schedule_next_poll()
@@ -61,10 +67,16 @@ defmodule Beeline.Topology.HealthChecker do
   end
 
   defp schedule_next_poll(state) do
-    drift = div(state.interval, 6)
-    Process.send_after(self(), :poll, state.interval + drift)
+    interval = state.interval_fn.()
+    drift = state.drift_fn.()
 
-    put_in(state.drift, drift)
+    Process.send_after(self(), :poll, interval + drift)
+
+    %__MODULE__{
+      state
+      | drift: drift,
+        interval: interval
+    }
   end
 
   defp poll_producer(state) do
@@ -114,4 +126,21 @@ defmodule Beeline.Topology.HealthChecker do
         nil
     end
   end
+
+  # coveralls-ignore-start
+  defp wrap_function(function) when is_function(function, 0), do: function
+
+  defp wrap_function({m, f, a}), do: fn -> apply(m, f, a) end
+
+  defp wrap_function(value), do: fn -> value end
+
+  defp wrap_function(function, producer_name) when is_function(function, 1) do
+    fn -> function.(producer_name) end
+  end
+
+  defp wrap_function({m, f, a}, producer_name) do
+    fn -> apply(m, f, [producer_name | a]) end
+  end
+
+  # coveralls-ignore-stop
 end

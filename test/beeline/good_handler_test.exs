@@ -48,8 +48,8 @@ defmodule Beeline.GoodHandlerTest do
       self_pid = self()
 
       :telemetry.attach(
-        "health-checker-stream-position-beeline-tester",
-        [:health_checker, :stream_position, :stop],
+        "beeline-health-checker-tester",
+        [:beeline, :health_check, :stop],
         fn event, measurements, metadata, _state ->
           send(self_pid, {:health_check, event, measurements, metadata})
         end,
@@ -77,19 +77,19 @@ defmodule Beeline.GoodHandlerTest do
 
       assert_receive {:health_check, _event, _measurements,
                       %{
-                        local_event_number: 2,
-                        latest_event_number: 2,
-                        event_listener: GoodHandler.Producer_tcp
+                        current_position: 2,
+                        head_position: 2,
+                        producer: GoodHandler.Producer_tcp
                       }},
-                     15_000
+                     5_000
 
       assert_receive {:health_check, _event, _measurements,
                       %{
-                        local_event_number: 2,
-                        latest_event_number: 2,
-                        event_listener: GoodHandler.Producer_grpc
+                        current_position: 2,
+                        head_position: 2,
+                        producer: GoodHandler.Producer_grpc
                       }},
-                     15_000
+                     5_000
     end
   end
 

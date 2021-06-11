@@ -55,7 +55,7 @@ defmodule Beeline.Config do
       A period in msec after initialization when each producer should
       query the `:auto_subscribe?` function.
       """,
-      type: {:or, [:mfa, :non_neg_integer]},
+      type: {:or, [:mfa, :non_neg_integer, {:fun, 0}]},
       default: {Enum, :random, [3_000..5_000]}
     ],
     spawn_health_checkers?: [
@@ -69,6 +69,28 @@ defmodule Beeline.Config do
       """,
       type: {:or, [:boolean, {:in, [nil]}]},
       default: nil
+    ],
+    health_check_interval: [
+      doc: """
+      How long the health checker processes should wait between polling
+      the stream positions. Can either be a function (MFA or 0-arity function)
+      or a non-negative integer. The value is treated as milliseconds.
+      """,
+      type: {:or, [:mfa, {:fun, 0}, :non_neg_integer]},
+      default: 51_000
+    ],
+    health_check_drift: [
+      doc: """
+      A noise to add to the interval specified with `:health_check_interval`.
+      This can be useful to allow that not all producers poll their positions
+      at the same time, which can reduce strain on the stream position store
+      and the EventStoreDB. Can either be a function (MFA or 0-arity function)
+      or a non-negative integer. The value is treated as milliseconds. If a
+      function is provided, it is invoked every time the health checker
+      process attempts to schedule the next poll.
+      """,
+      type: {:or, [:mfa, {:fun, 0}, :non_neg_integer]},
+      default: {Enum, :random, [0..10_000]}
     ],
     test_mode?: [
       doc: """

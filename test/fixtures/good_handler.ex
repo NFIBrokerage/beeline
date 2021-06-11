@@ -44,6 +44,8 @@ defmodule Beeline.Fixtures.GoodHandler do
       ],
       get_stream_position: {__MODULE__, :get_stream_position, []},
       subscribe_after: 0,
+      health_check_interval: 1_000,
+      health_check_drift: 0,
       context: %__MODULE__{opts: Map.new(opts)}
     )
   end
