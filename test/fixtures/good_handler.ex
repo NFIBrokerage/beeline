@@ -12,13 +12,11 @@ defmodule Beeline.Fixtures.GoodHandler do
   use Beeline
 
   def get_state do
-    __MODULE__
-    |> Beeline.consumer()
-    |> GenServer.call(:get_state)
+    GenServer.call(__MODULE__, :get_state)
   end
 
   def get_stream_position(producer) do
-    case __MODULE__ |> Beeline.consumer() |> GenServer.whereis() do
+    case GenServer.whereis(__MODULE__) do
       pid when is_pid(pid) ->
         GenServer.call(pid, {:get_stream_position, producer})
 

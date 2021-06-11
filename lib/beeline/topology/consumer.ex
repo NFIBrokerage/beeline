@@ -5,6 +5,6 @@ defmodule Beeline.Topology.Consumer do
   # function
 
   def start_link(opts) do
-    GenStage.start_link(opts[:module], opts, name: opts[:name])
+    GenStage.start_link(opts.module, opts, name: opts.name)
   end
 end
