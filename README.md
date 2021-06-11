@@ -17,4 +17,4 @@ def deps do
 end
 ```
 
-Check out the docs here: https://cuatro.hexdocs.pm/beeline
+Check out the docs here: https://hexdocs.pm/beeline
