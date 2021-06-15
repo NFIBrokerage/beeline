@@ -5,6 +5,8 @@ defmodule Beeline.GoodHandlerTest do
 
   use ExUnit.Case, async: true
 
+  import ExUnit.CaptureLog
+
   @moduletag :capture_log
 
   alias Beeline.Fixtures.{
@@ -23,7 +25,8 @@ defmodule Beeline.GoodHandlerTest do
   setup do
     [
       grpc_stream_name: "Beeline.Test-#{Spear.Event.uuid_v4()}",
-      tcp_stream_name: "Beeline.Test-#{Spear.Event.uuid_v4()}"
+      tcp_stream_name: "Beeline.Test-#{Spear.Event.uuid_v4()}",
+      self: self()
     ]
   end
 
@@ -45,51 +48,58 @@ defmodule Beeline.GoodHandlerTest do
 
     test "the consumer will store these events in state and increment stream positions",
          c do
-      self_pid = self()
+      _exporter = start_supervised!(Beeline.HealthChecker.Logger)
 
       :telemetry.attach(
         "beeline-health-checker-tester",
         [:beeline, :health_check, :stop],
         fn event, measurements, metadata, _state ->
-          send(self_pid, {:health_check, event, measurements, metadata})
+          send(c.self, {:health_check, event, measurements, metadata})
         end,
         :ok
       )
 
-      start_supervised!(
-        {GoodHandler,
-         grpc_stream_name: c.grpc_stream_name,
-         tcp_stream_name: c.tcp_stream_name}
-      )
+      log =
+        capture_log([level: :info], fn ->
+          start_supervised!(
+            {GoodHandler,
+             grpc_stream_name: c.grpc_stream_name,
+             tcp_stream_name: c.tcp_stream_name}
+          )
 
-      spawn(fn -> check_position(GoodHandler.Producer_grpc, 3, self_pid) end)
-      spawn(fn -> check_position(GoodHandler.Producer_tcp, 3, self_pid) end)
+          spawn(fn -> check_position(GoodHandler.Producer_grpc, 3, c.self) end)
+          spawn(fn -> check_position(GoodHandler.Producer_tcp, 3, c.self) end)
 
-      assert_receive {:done, GoodHandler.Producer_grpc}, 2000
-      assert_receive {:done, GoodHandler.Producer_tcp}, 2000
+          assert_receive {:done, GoodHandler.Producer_grpc}, 2000
+          assert_receive {:done, GoodHandler.Producer_tcp}, 2000
 
-      assert GoodHandler.get_stream_position(GoodHandler.Producer_grpc) == 2
-      assert GoodHandler.get_stream_position(GoodHandler.Producer_tcp) == 2
+          assert GoodHandler.get_stream_position(GoodHandler.Producer_grpc) == 2
+          assert GoodHandler.get_stream_position(GoodHandler.Producer_tcp) == 2
 
-      state = GoodHandler.get_state()
+          state = GoodHandler.get_state()
 
-      assert length(state.events) == 6
+          assert length(state.events) == 6
 
-      assert_receive {:health_check, _event, _measurements,
-                      %{
-                        current_position: 2,
-                        head_position: 2,
-                        producer: GoodHandler.Producer_tcp
-                      }},
-                     2_000
+          assert_receive {:health_check, _event, _measurements,
+                          %{
+                            current_position: 2,
+                            head_position: 2,
+                            producer: GoodHandler.Producer_tcp
+                          }},
+                         2_000
 
-      assert_receive {:health_check, _event, _measurements,
-                      %{
-                        current_position: 2,
-                        head_position: 2,
-                        producer: GoodHandler.Producer_grpc
-                      }},
-                     2_000
+          assert_receive {:health_check, _event, _measurements,
+                          %{
+                            current_position: 2,
+                            head_position: 2,
+                            producer: GoodHandler.Producer_grpc
+                          }},
+                         2_000
+        end)
+
+      assert log =~ inspect(GoodHandler.Producer_tcp)
+      assert log =~ inspect(GoodHandler.Producer_grpc)
+      assert log =~ "caught up"
     end
   end
 
