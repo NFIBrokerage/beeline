@@ -117,7 +117,7 @@ defmodule Beeline do
     case NimbleOptions.validate(opts, @schema) do
       {:error, reason} ->
         raise ArgumentError,
-              "invalid configuration given to Beeline.start_link/2," <>
+              "invalid configuration given to Beeline.start_link/2, " <>
                 reason.message
 
       {:ok, opts} ->
