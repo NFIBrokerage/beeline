@@ -56,7 +56,6 @@ jobs:
       run: |
         mix local.rebar --force
         mix local.hex --force
-        mix hex.organization auth cuatro --key $CUATRO_HEX_KEY
         mix deps.get
 
     - name: Compile dependencies
@@ -123,7 +122,6 @@ jobs:
       run: |
         mix local.rebar --force
         mix local.hex --force
-        mix hex.organization auth cuatro --key $CUATRO_HEX_KEY
         mix deps.get
 
     - name: Compile dependencies
@@ -156,7 +154,7 @@ jobs:
         prerelease: false
 
     - name: Publish library
-      run: mix hex.publish --yes --organization cuatro
+      run: mix hex.publish --yes
       env:
         HEX_API_KEY: ${{ secrets.HEX_PUBLISH_KEY }}
 
