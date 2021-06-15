@@ -5,7 +5,6 @@ defmodule Beeline.EventStoreDB do
 
   @callback latest_event_number(conn :: atom(), stream :: String.t()) ::
               non_neg_integer() | -1
-  @callback decode_event({atom(), map()} | struct()) :: map()
   @callback stream_position({atom(), map()} | struct()) ::
               non_neg_integer() | -1
 
@@ -28,7 +27,7 @@ defmodule Beeline.EventStoreDB do
 
   # extreme events arrive as two-tuples
   def decode_event({_producer, subscription_event}) do
-    Extreme.decode_event(subscription_event)
+    Jason.decode!(subscription_event.event.data, keys: :atoms)
   end
 
   # and spear events as %Spear.Event{} structs
