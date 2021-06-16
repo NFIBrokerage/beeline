@@ -7,6 +7,11 @@ defmodule Beeline.HealthChecker do
   for exporting this health-check information to an external monitoring
   service.
 
+  `Beeline.HealthChecker.Logger` is included as a reasonable default consumer
+  for this telemetry. You may wish to export this telemetry to another system
+  such as appsignal or grafana in order to create alerts when processors fall
+  behind.
+
   ## Telemetry
 
   * `[:beeline, :health_check, :stop]` - dispatched by each HealthChecker
