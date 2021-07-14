@@ -19,7 +19,7 @@ if_extreme do
           require_master: false
         )
 
-      case conn.execute(read_stream_events_msg) do
+      case execute(conn, read_stream_events_msg) do
         {:ok, %ReadStreamEventsCompleted{last_event_number: number}} ->
           number
 
@@ -30,6 +30,15 @@ if_extreme do
 
           # coveralls-ignore-stop
       end
+    end
+
+    def execute(conn, message, timeout \\ 5_000) do
+      Extreme.RequestManager.execute(
+        conn,
+        message,
+        Extreme.Tools.generate_uuid(),
+        timeout
+      )
     end
 
     # coveralls-ignore-start
