@@ -36,7 +36,8 @@ defmodule Beeline.HealthChecker do
             the producer
           * `:head_position` (integer) - the stream position of the head
             (the latest event) of the EventStoreDB stream
-          * `:auto_subscribe` (boolean) - whether the producer auto subscribes on startup
+          * `:auto_subscribe` (boolean) - the value of the producer's `:auto_subscribe?`
+            flag at the time of polling
   """
 
   @behaviour GenServer
