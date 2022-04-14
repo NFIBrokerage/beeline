@@ -36,6 +36,7 @@ defmodule Beeline.HealthChecker do
             the producer
           * `:head_position` (integer) - the stream position of the head
             (the latest event) of the EventStoreDB stream
+          * `:auto_subscribe` (boolean) - whether the producer auto subscribes on startup
   """
 
   @behaviour GenServer
@@ -50,7 +51,8 @@ defmodule Beeline.HealthChecker do
     :hostname,
     interval: 0,
     drift: 0,
-    current_position: -1
+    current_position: -1,
+    auto_subscribe?: false
   ]
 
   @doc false
@@ -85,7 +87,8 @@ defmodule Beeline.HealthChecker do
           wrap_function(config.get_stream_position, producer.name),
         interval_fn: wrap_function(config.health_check_interval),
         drift_fn: wrap_function(config.health_check_drift),
-        hostname: hostname()
+        hostname: hostname(),
+        auto_subscribe?: config.auto_subscribe?.(producer.name)
       }
       |> schedule_next_poll()
 
@@ -123,7 +126,8 @@ defmodule Beeline.HealthChecker do
       interval: state.interval,
       drift: state.drift,
       measurement_time: DateTime.utc_now(),
-      prior_position: state.current_position
+      prior_position: state.current_position,
+      auto_subscribe: state.auto_subscribe?
     }
 
     :telemetry.span(
