@@ -2,7 +2,7 @@
 
 ![Actions CI](https://github.com/NFIBrokerage/beeline/workflows/Actions%20CI/badge.svg)
 
-a tool for building in-order GenStage topologies for EventStoreDB
+a tool for building in-order GenStage topologies for EventStoreDB, not to bee confused with honeycomb beelines
 
 ## Installation
 
