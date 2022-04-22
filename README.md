@@ -2,7 +2,7 @@
 
 ![Actions CI](https://github.com/NFIBrokerage/beeline/workflows/Actions%20CI/badge.svg)
 
-a tool for building in-order GenStage topologies for EventStoreDB, not to bee confused with honeycomb beelines
+a tool for building in-order GenStage topologies for EventStoreDB[^honeycomb-beelines]
 
 ## Installation
 
@@ -82,3 +82,5 @@ If you want to handle events out of order with concurrency and batching,
 Broadway is an excellent choice when paired with the EventStoreDB persistent
 subscriptions feature. Broadway's acknowledgement system fits perfectly with
 the persistent subscriptions API.
+
+[^honeycomb-beelines]: not to bee confused with honeycomb beelines
