@@ -12,6 +12,12 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 
 -->
 
+## 0.3.1 - 2022-05-05
+
+### Fixed
+
+- Use `wrap_function` to properly evaluate `auto_subscribe` value
+
 ## 0.3.0 - 2022-04-14
 
 ### Added

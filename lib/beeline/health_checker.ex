@@ -89,7 +89,7 @@ defmodule Beeline.HealthChecker do
         interval_fn: wrap_function(config.health_check_interval),
         drift_fn: wrap_function(config.health_check_drift),
         hostname: hostname(),
-        auto_subscribe?: config.auto_subscribe?.(producer.name)
+        auto_subscribe?: wrap_function(config.auto_subscribe?, producer.name)
       }
       |> schedule_next_poll()
 
@@ -128,7 +128,7 @@ defmodule Beeline.HealthChecker do
       drift: state.drift,
       measurement_time: DateTime.utc_now(),
       prior_position: state.current_position,
-      auto_subscribe: state.auto_subscribe?
+      auto_subscribe: state.auto_subscribe?.()
     }
 
     :telemetry.span(
