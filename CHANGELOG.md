@@ -10,7 +10,13 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 
 ## UNRELEASED
 
---
+-->
+
+## 0.3.0 - 2022-04-14
+
+### Added
+
+- Added `auto_subscribe` field to telemetry event
 
 ## 0.2.0 - 2021-07-14
 

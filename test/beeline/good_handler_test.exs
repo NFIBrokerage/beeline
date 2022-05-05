@@ -84,7 +84,8 @@ defmodule Beeline.GoodHandlerTest do
                           %{
                             current_position: 2,
                             head_position: 2,
-                            producer: GoodHandler.Producer_tcp
+                            producer: GoodHandler.Producer_tcp,
+                            auto_subscribe: true
                           }},
                          2_000
 
@@ -92,7 +93,8 @@ defmodule Beeline.GoodHandlerTest do
                           %{
                             current_position: 2,
                             head_position: 2,
-                            producer: GoodHandler.Producer_grpc
+                            producer: GoodHandler.Producer_grpc,
+                            auto_subscribe: true
                           }},
                          2_000
         end)
