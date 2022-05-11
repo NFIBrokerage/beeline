@@ -12,6 +12,11 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 
 -->
 
+## 1.0.0 - 2022-05-11
+
+This change is for stability only and does not present any functional
+changes from v0.3.1.
+
 ## 0.3.1 - 2022-05-05
 
 ### Fixed
