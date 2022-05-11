@@ -9,10 +9,10 @@ a tool for building in-order GenStage topologies for EventStoreDB[^honeycomb-bee
 ```elixir
 def deps do
   [
-    {:beeline, "~> 0.1"},
+    {:beeline, "~> 1.0"},
     # these are optional: add whichever adapter your project needs
-    {:kelvin, "~> 0.3"},
-    {:volley, "~> 0.4"}
+    {:kelvin, "~> 1.0"},
+    {:volley, "~> 1.0"}
   ]
 end
 ```
