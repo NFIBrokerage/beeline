@@ -9,7 +9,8 @@ defmodule Beeline.Config do
       The GenServer name for the topology. The topology will build on this
       name, using it as a prefix.
       """,
-      type: :atom
+      type:
+        {:or, [:atom, {:tuple, [:atom, :any]}, {:tuple, [:atom, :atom, :any]}]}
     ],
     producers: [
       doc: """

@@ -143,7 +143,7 @@ defmodule Beeline do
   @spec restart_stages(module()) :: :ok | {:error, term()}
   def restart_stages(beeline) when is_atom(beeline) do
     beeline
-    |> Module.concat(Topology)
+    |> Beeline.ProcessNaming.name(Topology)
     |> GenServer.call(:restart_stages)
   end
 
@@ -217,7 +217,7 @@ defmodule Beeline do
   """
   def test_events(events, beeline) when is_atom(beeline) do
     beeline
-    |> Module.concat(Topology)
+    |> Beeline.ProcessNaming.name(Topology)
     |> GenServer.call({:test_events, events})
   end
 end
