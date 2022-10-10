@@ -15,8 +15,7 @@ defmodule Beeline.ProcessNaming do
     {:global, Module.concat(base_name, appended_name)}
   end
 
-  def name({:via, registry, base_name}, appended_name)
-      when is_binary(base_name) do
-    {:via, registry, [base_name: base_name, name: appended_name]}
+  def name({:via, registry, {registry_name, base_name}}, appended_name) do
+    {:via, registry, {registry_name, {base_name, appended_name}}}
   end
 end

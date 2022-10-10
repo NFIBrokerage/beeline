@@ -196,7 +196,7 @@ defmodule Beeline.Config do
 
   @doc false
   def add_default_producer_opt({:name, nil}, acc, key, all_opts) do
-    name = Module.concat(all_opts[:name], "Producer_#{key}")
+    name = Beeline.ProcessNaming.name(all_opts[:name], "Producer_#{key}")
 
     [{:name, name} | acc]
   end
