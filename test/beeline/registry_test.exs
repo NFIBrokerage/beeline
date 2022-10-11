@@ -1,49 +1,11 @@
-defmodule Beeline.RegistryProducerFixture do
-  @moduledoc """
-  A fixture event handler that subscribes to a dummy producer
-  """
-
-  use Beeline
-
-  def start_link(test_proc) do
-    Beeline.start_link(__MODULE__,
-      name: {:via, Registry, {Registry.ViaTest, __MODULE__}},
-      producers: [
-        default: [
-          adapter: :dummy,
-          connection: nil,
-          stream_name: "dummy-stream"
-        ]
-      ],
-      spawn_health_checkers?: false,
-      # these options don't matter in test mode
-      auto_subscribe?: fn _producer -> false end,
-      get_stream_position: fn _producer -> -1 end,
-      context: test_proc
-    )
-  end
-
-  @impl GenStage
-  def handle_events([subscription_event], _from, test_proc) do
-    event = Beeline.decode_event(subscription_event)
-
-    if match?(%{poison?: true}, event) do
-      raise "inconceivable!"
-    end
-
-    send(test_proc, {:event, event})
-
-    {:noreply, [], test_proc}
-  end
-end
-
 defmodule Beeline.RegistryTest do
   use ExUnit.Case, async: true
 
   @moduletag :capture_log
 
   @producer_id {Beeline.Topology.Producer, :default}
-  @fixture Beeline.RegistryProducerFixture
+  @fixture Beeline.DummyNameFixture
+  @name {:via, Registry, {Registry.ViaTest, @fixture}}
 
   setup_all do
     {:ok, _} = Registry.start_link(keys: :unique, name: Registry.ViaTest)
@@ -51,17 +13,13 @@ defmodule Beeline.RegistryTest do
   end
 
   setup do
-    [beeline_pid: start_supervised!({@fixture, self()})]
+    [beeline_pid: start_supervised!({@fixture, %{name: @name, proc: self()}})]
   end
 
   test "the dummy handler can handle events" do
     events = [%{foo: "bar"}, %{foo: "bar"}, %{foo: "bar"}]
 
-    :ok =
-      Beeline.test_events(
-        events,
-        {:via, Registry, {Registry.ViaTest, @fixture}}
-      )
+    :ok = Beeline.test_events(events, @name)
 
     assert_receive {:event, event_a}
     assert_receive {:event, event_b}
@@ -79,9 +37,7 @@ defmodule Beeline.RegistryTest do
     producer_ref = Process.monitor(producer_pid)
     consumer_ref = Process.monitor(consumer_pid)
 
-    assert Beeline.restart_stages(
-             {:via, Registry, {Registry.ViaTest, @fixture}}
-           ) == :ok
+    assert Beeline.restart_stages(@name) == :ok
 
     assert_receive {:DOWN, ^producer_ref, :process, ^producer_pid, :shutdown}
     assert_receive {:DOWN, ^consumer_ref, :process, ^consumer_pid, :shutdown}
@@ -107,11 +63,7 @@ defmodule Beeline.RegistryTest do
     good_event = %{foo: "bar"}
     bad_event = %{poison?: true}
 
-    :ok =
-      Beeline.test_events(
-        [good_event, bad_event],
-        {:via, Registry, {Registry.ViaTest, @fixture}}
-      )
+    :ok = Beeline.test_events([good_event, bad_event], @name)
 
     assert_receive {:event, ^good_event}
     refute_receive {:event, ^bad_event}
@@ -130,7 +82,7 @@ defmodule Beeline.RegistryTest do
   end
 
   defp stage_children do
-    {:via, Registry, {Registry.ViaTest, @fixture}}
+    @name
     |> Beeline.ProcessNaming.name(StageSupervisor)
     |> Supervisor.which_children()
     |> Enum.into(%{}, fn {id, pid, _, _} -> {id, pid} end)

@@ -1,52 +1,16 @@
-defmodule Beeline.DummyProducerFixture do
-  @moduledoc """
-  A fixture event handler that subscribes to a dummy producer
-  """
-
-  use Beeline
-
-  def start_link(test_proc) do
-    Beeline.start_link(__MODULE__,
-      name: __MODULE__,
-      producers: [
-        default: [
-          adapter: :dummy,
-          connection: nil,
-          stream_name: "dummy-stream"
-        ]
-      ],
-      spawn_health_checkers?: false,
-      # these options don't matter in test mode
-      auto_subscribe?: fn _producer -> false end,
-      get_stream_position: fn _producer -> -1 end,
-      context: test_proc
-    )
-  end
-
-  @impl GenStage
-  def handle_events([subscription_event], _from, test_proc) do
-    event = Beeline.decode_event(subscription_event)
-
-    if match?(%{poison?: true}, event) do
-      raise "inconceivable!"
-    end
-
-    send(test_proc, {:event, event})
-
-    {:noreply, [], test_proc}
-  end
-end
-
 defmodule Beeline.DummyProducerTest do
   use ExUnit.Case, async: true
 
   @moduletag :capture_log
 
   @producer_id {Beeline.Topology.Producer, :default}
-  @fixture Beeline.DummyProducerFixture
+  @fixture Beeline.DummyNameFixture
 
   setup do
-    [beeline_pid: start_supervised!({@fixture, self()})]
+    [
+      beeline_pid:
+        start_supervised!({@fixture, %{name: @fixture, proc: self()}})
+    ]
   end
 
   test "the dummy handler can handle events" do
