@@ -140,7 +140,7 @@ defmodule Beeline do
       iex> Beeline.restart_stages(MyEventHandler)
       :ok
   """
-  @spec restart_stages(module()) :: :ok | {:error, term()}
+  @spec restart_stages(GenServer.name()) :: :ok | {:error, term()}
   def restart_stages(beeline) do
     beeline
     |> Beeline.ProcessNaming.name(Topology)
