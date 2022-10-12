@@ -1,22 +1,20 @@
-defmodule Beeline.DummyProducerTest do
+defmodule Beeline.GlobalRegistryTest do
   use ExUnit.Case, async: true
 
   @moduletag :capture_log
 
   @producer_id {Beeline.Topology.Producer, :default}
   @fixture Beeline.DummyNameFixture
+  @name {:global, @fixture}
 
   setup do
-    [
-      beeline_pid:
-        start_supervised!({@fixture, %{name: @fixture, proc: self()}})
-    ]
+    [beeline_pid: start_supervised!({@fixture, %{name: @name, proc: self()}})]
   end
 
   test "the dummy handler can handle events" do
     events = [%{foo: "bar"}, %{foo: "bar"}, %{foo: "bar"}]
 
-    :ok = Beeline.test_events(events, @fixture)
+    :ok = Beeline.test_events(events, {:global, @fixture})
 
     assert_receive {:event, event_a}
     assert_receive {:event, event_b}
@@ -34,7 +32,7 @@ defmodule Beeline.DummyProducerTest do
     producer_ref = Process.monitor(producer_pid)
     consumer_ref = Process.monitor(consumer_pid)
 
-    assert Beeline.restart_stages(@fixture) == :ok
+    assert Beeline.restart_stages({:global, @fixture}) == :ok
 
     assert_receive {:DOWN, ^producer_ref, :process, ^producer_pid, :shutdown}
     assert_receive {:DOWN, ^consumer_ref, :process, ^consumer_pid, :shutdown}
@@ -60,7 +58,7 @@ defmodule Beeline.DummyProducerTest do
     good_event = %{foo: "bar"}
     bad_event = %{poison?: true}
 
-    :ok = Beeline.test_events([good_event, bad_event], @fixture)
+    :ok = Beeline.test_events([good_event, bad_event], {:global, @fixture})
 
     assert_receive {:event, ^good_event}
     refute_receive {:event, ^bad_event}
@@ -79,7 +77,8 @@ defmodule Beeline.DummyProducerTest do
   end
 
   defp stage_children do
-    @fixture.StageSupervisor
+    {:global, @fixture}
+    |> Beeline.ProcessNaming.name(StageSupervisor)
     |> Supervisor.which_children()
     |> Enum.into(%{}, fn {id, pid, _, _} -> {id, pid} end)
   end

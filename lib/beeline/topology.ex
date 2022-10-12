@@ -3,14 +3,13 @@ defmodule Beeline.Topology do
 
   @behaviour GenServer
 
+  import Beeline.ProcessNaming, only: [name: 2]
   alias __MODULE__.StageSupervisor
 
   defstruct [:supervisor_pid, :config]
 
   def start_link(config) do
-    GenServer.start_link(__MODULE__, config,
-      name: Module.concat(config.name, "Topology")
-    )
+    GenServer.start_link(__MODULE__, config, name: name(config.name, Topology))
   end
 
   @impl GenServer
@@ -70,7 +69,7 @@ defmodule Beeline.Topology do
 
     Supervisor.start_link(children,
       strategy: :one_for_one,
-      name: Module.concat(config.name, Supervisor)
+      name: name(config.name, Supervisor)
     )
   end
 end

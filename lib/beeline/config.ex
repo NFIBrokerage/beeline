@@ -9,7 +9,8 @@ defmodule Beeline.Config do
       The GenServer name for the topology. The topology will build on this
       name, using it as a prefix.
       """,
-      type: :atom
+      type:
+        {:or, [:atom, {:tuple, [:atom, :any]}, {:tuple, [:atom, :atom, :any]}]}
     ],
     producers: [
       doc: """
@@ -195,7 +196,7 @@ defmodule Beeline.Config do
 
   @doc false
   def add_default_producer_opt({:name, nil}, acc, key, all_opts) do
-    name = Module.concat(all_opts[:name], "Producer_#{key}")
+    name = Beeline.ProcessNaming.name(all_opts[:name], "Producer_#{key}")
 
     [{:name, name} | acc]
   end

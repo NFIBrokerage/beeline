@@ -14,6 +14,7 @@ defmodule Beeline.Topology.StageSupervisor do
 
   @behaviour Supervisor
 
+  import Beeline.ProcessNaming, only: [name: 2]
   alias Beeline.Topology.{Producer, Consumer}
 
   def child_spec(config) do
@@ -25,16 +26,10 @@ defmodule Beeline.Topology.StageSupervisor do
     }
   end
 
-  def name(%Beeline.Config{name: name}) do
-    name(name)
-  end
-
-  def name(base_name) when is_atom(base_name) do
-    Module.concat(base_name, "StageSupervisor")
-  end
-
   def start_link(config) do
-    Supervisor.start_link(__MODULE__, config, name: name(config))
+    Supervisor.start_link(__MODULE__, config,
+      name: name(config, StageSupervisor)
+    )
   end
 
   @impl Supervisor

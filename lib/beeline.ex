@@ -1,4 +1,5 @@
 defmodule Beeline do
+  import Beeline.ProcessNaming.Guards
   @schema Beeline.Config.schema()
   @producer_schema Beeline.Producer.schema()
 
@@ -140,10 +141,10 @@ defmodule Beeline do
       iex> Beeline.restart_stages(MyEventHandler)
       :ok
   """
-  @spec restart_stages(module()) :: :ok | {:error, term()}
-  def restart_stages(beeline) when is_atom(beeline) do
+  @spec restart_stages(GenServer.name()) :: :ok | {:error, term()}
+  def restart_stages(beeline) when is_beeline_name(beeline) do
     beeline
-    |> Module.concat(Topology)
+    |> Beeline.ProcessNaming.name(Topology)
     |> GenServer.call(:restart_stages)
   end
 
@@ -215,9 +216,9 @@ defmodule Beeline do
   This function can be used to test running events through a topology.
   If there are multiple producers, one is picked at random.
   """
-  def test_events(events, beeline) when is_atom(beeline) do
+  def test_events(events, beeline) when is_beeline_name(beeline) do
     beeline
-    |> Module.concat(Topology)
+    |> Beeline.ProcessNaming.name(Topology)
     |> GenServer.call({:test_events, events})
   end
 end
