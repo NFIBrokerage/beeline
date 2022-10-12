@@ -11,7 +11,7 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 ## UNRELEASED
 
 -->
-## 1.0.1 - 2022-10-12
+## 1.1.0 - 2022-10-12
 
 This change adds the ability to use :global and Registry names for the process
 and topology.
