@@ -8,7 +8,7 @@ env:
 jobs:
   bless:
     name: Bless
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     env:
       MIX_ENV: test
       EVENTSTORE_TCP_HOST: localhost
@@ -76,7 +76,7 @@ jobs:
 
   publish-hex-package:
     name: Publish Hex Package ⬆️☁️
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     if: startsWith(github.ref, 'refs/tags/v')
     env:
       MIX_ENV: dev
