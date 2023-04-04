@@ -60,7 +60,7 @@ defmodule Beeline.GoodHandlerTest do
       )
 
       log =
-        capture_log([level: :info], fn ->
+        capture_log([level: :debug], fn ->
           start_supervised!(
             {GoodHandler,
              grpc_stream_name: c.grpc_stream_name,
