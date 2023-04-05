@@ -19,7 +19,7 @@ defmodule Beeline.HealthChecker.Logger do
   end
   ```
 
-  The log messages are 'info' level in a format of the producer name
+  The log messages are 'debug' level in a format of the producer name
   concatenated with "is caught up." if the producer's current stream position
   matches the latest available stream position and a 'warn' level message
   with "is behind: n events." when the producer is behind, with `n` being
@@ -53,7 +53,7 @@ defmodule Beeline.HealthChecker.Logger do
     log_metadata = [delta: delta, event_listener: producer]
 
     if delta == 0 do
-      Logger.info("#{producer} is caught up.", log_metadata)
+      Logger.debug("#{producer} is caught up.", log_metadata)
     else
       # coveralls-ignore-start
       Logger.warn("#{producer} is behind: #{delta} events.", log_metadata)

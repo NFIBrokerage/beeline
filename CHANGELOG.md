@@ -11,6 +11,13 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 ## UNRELEASED
 
 -->
+
+## 1.1.1 - 2023-04-04
+
+### Changed
+
+- "caught up" messages logged at debug level
+
 ## 1.1.0 - 2022-10-12
 
 This change adds the ability to use :global and Registry names for the process
