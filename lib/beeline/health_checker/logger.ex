@@ -20,10 +20,17 @@ defmodule Beeline.HealthChecker.Logger do
   ```
 
   The log messages are 'debug' level in a format of the producer name
-  concatenated with "is caught up." if the producer's current stream position
-  matches the latest available stream position and a 'warn' level message
-  with "is behind: n events." when the producer is behind, with `n` being
-  the number of events. The log messages also include metadata fields
+  concatenated with "is up-to-date." if the producer's current stream position
+  matches the latest available stream position (within `acceptable_behind_by`).
+
+  When producer is falling behind and falling behind more then in a previous check,
+  it is logged in warn level with "is behind: n events." and "is behind more: n events"
+  with `n` being the number of events producer is behind head of stream.
+
+  Once producer is behind the stream less then in a previous check and when it catches up with it,
+  it is logged in `info` level as `is behind but catching up: n events` and `is caught up.` respectively.
+
+  The log messages also include metadata fields
   `:event_listener` - the name of the producer - and `delta`: the number
   of events by which the producer is behind.
   """
@@ -52,13 +59,36 @@ defmodule Beeline.HealthChecker.Logger do
     delta = metadata[:head_position] - metadata[:current_position]
     log_metadata = [delta: delta, event_listener: producer]
 
-    if delta == 0 do
-      Logger.debug("#{producer} is caught up.", log_metadata)
-    else
-      # coveralls-ignore-start
-      Logger.warn("#{producer} is behind: #{delta} events.", log_metadata)
+    case metadata[:status] do
+      :up_to_date ->
+        Logger.debug("#{producer} is up-to-date", log_metadata)
 
-      # coveralls-ignore-stop
+      # coveralls-ignore-start
+      :caught_up ->
+        Logger.info("#{producer} is caught up.", log_metadata)
+
+      :falling_behind ->
+        Logger.warn("#{producer} is behind: #{delta} events.", log_metadata)
+
+      :falling_behind_more ->
+        Logger.warn(
+          "#{producer} is behind more: #{delta} events.",
+          log_metadata
+        )
+
+      :catching_up ->
+        Logger.info(
+          "#{producer} is behind but catching up: #{delta} events.",
+          log_metadata
+        )
+
+      :stuck ->
+        Logger.error(
+          "#{producer} is stuck at #{metadata[:current_position]}: behind by #{delta} events.",
+          log_metadata
+        )
+
+        # coveralls-ignore-stop
     end
 
     state

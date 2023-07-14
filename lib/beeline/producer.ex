@@ -55,7 +55,9 @@ defmodule Beeline.Producer do
     ]
   ]
 
+  # coveralls-ignore-start
   def schema, do: @schema
+  # coveralls-ignore-stop
 
   defstruct Keyword.keys(@schema)
 end

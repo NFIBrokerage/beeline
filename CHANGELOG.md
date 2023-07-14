@@ -12,6 +12,12 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 
 -->
 
+## 1.1.2 - 2023-07-14
+
+### Changed
+
+- More accurate health check monitoring and logging
+
 ## 1.1.1 - 2023-04-04
 
 ### Changed
@@ -46,7 +52,7 @@ changes from v0.3.1.
 
 - The extreme adapter for fetching the latest event number has been patched
   to treat the extreme connection as a process instead of a module
-    - this allows one to use connections which are not modules
+  - this allows one to use connections which are not modules
 - Fixed whitespace in ArgumentError message for invalid configuration
 
 ## 0.1.0 - 2021-06-15
