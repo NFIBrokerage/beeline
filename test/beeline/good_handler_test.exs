@@ -101,7 +101,7 @@ defmodule Beeline.GoodHandlerTest do
 
       assert log =~ inspect(GoodHandler.Producer_tcp)
       assert log =~ inspect(GoodHandler.Producer_grpc)
-      assert log =~ "caught up"
+      assert log =~ "up-to-date"
     end
   end
 

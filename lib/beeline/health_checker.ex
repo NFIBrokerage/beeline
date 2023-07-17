@@ -42,6 +42,8 @@ defmodule Beeline.HealthChecker do
 
   @behaviour GenServer
 
+  alias Beeline.HealthChecker.Impl
+
   defstruct [
     :producer,
     :stream_name,
@@ -50,9 +52,13 @@ defmodule Beeline.HealthChecker do
     :get_stream_position,
     :get_head_position,
     :hostname,
+    :status,
     interval: 0,
     drift: 0,
+    acceptable_behind_by: 5,
     current_position: -1,
+    head_position: -1,
+    up_to_date?: true,
     auto_subscribe?: false
   ]
 
@@ -89,6 +95,7 @@ defmodule Beeline.HealthChecker do
         interval_fn: wrap_function(config.health_check_interval),
         drift_fn: wrap_function(config.health_check_drift),
         hostname: hostname(),
+        acceptable_behind_by: config.acceptable_behind_by,
         auto_subscribe?: wrap_function(config.auto_subscribe?, producer.name)
       }
       |> schedule_next_poll()
@@ -100,7 +107,7 @@ defmodule Beeline.HealthChecker do
   def handle_info(:poll, state) do
     state =
       state
-      |> poll_producer()
+      |> Impl.poll_producer()
       |> schedule_next_poll()
 
     {:noreply, state}
@@ -119,56 +126,17 @@ defmodule Beeline.HealthChecker do
     }
   end
 
-  defp poll_producer(state) do
-    metadata = %{
-      producer: state.producer,
-      stream_name: state.stream_name,
-      hostname: state.hostname,
-      interval: state.interval,
-      drift: state.drift,
-      measurement_time: DateTime.utc_now(),
-      prior_position: state.current_position,
-      auto_subscribe: state.auto_subscribe?.()
-    }
-
-    :telemetry.span(
-      [:beeline, :health_check],
-      metadata,
-      fn ->
-        current_position = state.get_stream_position.()
-
-        metadata =
-          Map.merge(metadata, %{
-            current_position: current_position,
-            head_position: state.get_head_position.(),
-            alive?: alive?(state.producer)
-          })
-
-        state = put_in(state.current_position, current_position)
-
-        {state, metadata}
-      end
-    )
-  end
-
-  defp alive?(producer) do
-    case GenServer.whereis(producer) do
-      nil -> false
-      pid -> Process.alive?(pid)
-    end
-  end
-
   defp hostname do
     case :inet.gethostname() do
       {:ok, hostname_charlist} ->
         hostname_charlist |> to_string()
 
+      # coveralls-ignore-start
       _ ->
         nil
     end
   end
 
-  # coveralls-ignore-start
   defp wrap_function(function) when is_function(function, 0), do: function
 
   defp wrap_function({m, f, a}), do: fn -> apply(m, f, a) end

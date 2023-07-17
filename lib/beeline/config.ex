@@ -110,6 +110,15 @@ defmodule Beeline.Config do
       """,
       type: :any,
       default: nil
+    ],
+    acceptable_behind_by: [
+      doc: """
+      If listener is behind stream but by this number of events it is considered ok.
+      If in next check it is still behind in this range but didn't process any event
+      since last check, listener is considered stale or "behind".
+      """,
+      type: :non_neg_integer,
+      default: 5
     ]
   ]
 
