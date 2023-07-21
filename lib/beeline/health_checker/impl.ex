@@ -25,7 +25,8 @@ defmodule Beeline.HealthChecker.Impl do
             current_position: situation.current_listener_position,
             head_position: situation.current_stream_position,
             alive?: _alive?(state.producer),
-            status: situation.status
+            status: situation.status,
+            previous_status: state.status
           })
 
         state = %HealthChecker{

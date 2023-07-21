@@ -62,6 +62,7 @@ defmodule Beeline.HealthChecker.ImplTest do
                       {:telemetry_event,
                        %{
                          status: :up_to_date,
+                         previous_status: _,
                          prior_position: _,
                          current_position: 2,
                          head_position: 5
@@ -81,6 +82,7 @@ defmodule Beeline.HealthChecker.ImplTest do
                       {:telemetry_event,
                        %{
                          status: :stuck,
+                         previous_status: :up_to_date,
                          prior_position: _,
                          current_position: 2,
                          head_position: 5
@@ -113,6 +115,7 @@ defmodule Beeline.HealthChecker.ImplTest do
                       {:telemetry_event,
                        %{
                          status: :up_to_date,
+                         previous_status: _,
                          prior_position: _,
                          current_position: 2,
                          head_position: 5
@@ -138,6 +141,7 @@ defmodule Beeline.HealthChecker.ImplTest do
                       {:telemetry_event,
                        %{
                          status: :up_to_date,
+                         previous_status: :up_to_date,
                          prior_position: 2,
                          current_position: 3,
                          head_position: 7
@@ -170,6 +174,7 @@ defmodule Beeline.HealthChecker.ImplTest do
                       {:telemetry_event,
                        %{
                          status: :caught_up,
+                         previous_status: _,
                          prior_position: _,
                          current_position: 2,
                          head_position: 3
@@ -203,6 +208,7 @@ defmodule Beeline.HealthChecker.ImplTest do
                       {:telemetry_event,
                        %{
                          status: :stuck,
+                         previous_status: _,
                          prior_position: 2,
                          current_position: 2,
                          head_position: 12
@@ -236,6 +242,7 @@ defmodule Beeline.HealthChecker.ImplTest do
                       {:telemetry_event,
                        %{
                          status: :stuck,
+                         previous_status: _,
                          prior_position: 2,
                          current_position: 2,
                          head_position: 12
@@ -269,6 +276,7 @@ defmodule Beeline.HealthChecker.ImplTest do
                       {:telemetry_event,
                        %{
                          status: :falling_behind,
+                         previous_status: _,
                          prior_position: 2,
                          current_position: 5,
                          head_position: 15
@@ -302,6 +310,7 @@ defmodule Beeline.HealthChecker.ImplTest do
                       {:telemetry_event,
                        %{
                          status: :falling_behind_more,
+                         previous_status: _,
                          prior_position: 2,
                          current_position: 3,
                          head_position: 16
@@ -335,6 +344,7 @@ defmodule Beeline.HealthChecker.ImplTest do
                       {:telemetry_event,
                        %{
                          status: :catching_up,
+                         previous_status: _,
                          prior_position: 2,
                          current_position: 5,
                          head_position: 12
