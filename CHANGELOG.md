@@ -12,6 +12,12 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 
 -->
 
+## 1.1.3 - 2023-07-21
+
+### Added
+
+- Added `previous_status` to metadata of telemetry event.
+
 ## 1.1.2 - 2023-07-14
 
 ### Changed

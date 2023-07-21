@@ -52,7 +52,7 @@ defmodule Beeline.HealthChecker do
     :get_stream_position,
     :get_head_position,
     :hostname,
-    :status,
+    status: :up_to_date,
     interval: 0,
     drift: 0,
     acceptable_behind_by: 5,
