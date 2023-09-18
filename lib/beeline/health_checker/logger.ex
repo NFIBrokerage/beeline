@@ -58,38 +58,35 @@ defmodule Beeline.HealthChecker.Logger do
     producer = inspect(metadata[:producer])
     delta = metadata[:head_position] - metadata[:current_position]
     log_metadata = [delta: delta, event_listener: producer]
+    auto_subscribe? = metadata[:auto_subscribe]
 
-    case metadata[:status] do
-      :up_to_date ->
-        Logger.debug("#{producer} is up-to-date", log_metadata)
+    {level, msg} =
+      case metadata[:status] do
+        :up_to_date ->
+          {:debug, "#{producer} is up-to-date"}
 
-      # coveralls-ignore-start
-      :caught_up ->
-        Logger.info("#{producer} is caught up.", log_metadata)
+        # coveralls-ignore-start
+        :caught_up ->
+          {:info, "#{producer} is caught up."}
 
-      :falling_behind ->
-        Logger.warn("#{producer} is behind: #{delta} events.", log_metadata)
+        :falling_behind ->
+          {:warning, "#{producer} is behind: #{delta} events."}
 
-      :falling_behind_more ->
-        Logger.warn(
-          "#{producer} is behind more: #{delta} events.",
-          log_metadata
-        )
+        :falling_behind_more ->
+          {:warning, "#{producer} is behind more: #{delta} events."}
 
-      :catching_up ->
-        Logger.info(
-          "#{producer} is behind but catching up: #{delta} events.",
-          log_metadata
-        )
+        :catching_up ->
+          {:info, "#{producer} is behind but catching up: #{delta} events."}
 
-      :stuck ->
-        Logger.error(
-          "#{producer} is stuck at #{metadata[:current_position]}: behind by #{delta} events.",
-          log_metadata
-        )
+        :stuck ->
+          {:error,
+           "#{producer} is stuck at #{metadata[:current_position]}: behind by #{delta} events."}
 
-        # coveralls-ignore-stop
-    end
+          # coveralls-ignore-stop
+      end
+
+    level = if auto_subscribe?, do: level, else: :debug
+    Logger.log(level, msg, log_metadata)
 
     state
   end

@@ -12,6 +12,12 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 
 -->
 
+## 1.1.4 - 2023-09-18
+
+### Changed
+
+- Log everything health check related with `debug` level if `auto_subscribe` is `false`.
+
 ## 1.1.3 - 2023-07-21
 
 ### Added
