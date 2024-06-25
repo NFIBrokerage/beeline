@@ -12,6 +12,12 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 
 -->
 
+## 1.2.0 - 2024-06-25
+
+### Changed
+
+- Use `kelvin ~> 1.1.0` with extreme's (`~> 1.1.0`) backpressure listener
+
 ## 1.1.4 - 2023-09-18
 
 ### Changed

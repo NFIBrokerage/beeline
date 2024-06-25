@@ -48,7 +48,7 @@ defmodule Beeline.MixProject do
       {:nimble_options, "~> 0.1"},
       {:jason, "~> 1.0"},
       {:telemetry, "~> 0.4 or ~> 1.0"},
-      {:kelvin, "~> 0.4 or ~> 1.0", optional: true},
+      {:kelvin, "~> 1.1.0-rc06", optional: true},
       {:volley, "~> 0.4 or ~> 1.0", optional: true},
       # docs
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
