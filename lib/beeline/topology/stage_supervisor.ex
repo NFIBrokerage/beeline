@@ -60,7 +60,11 @@ defmodule Beeline.Topology.StageSupervisor do
   # coveralls-ignore-start
   defp producer_module(_, true = _test_mode?), do: Beeline.DummyProducer
   # coveralls-ignore-stop
-  defp producer_module(:kelvin, _), do: Kelvin.InOrderSubscription
+  defp producer_module(:kelvin, _) do
+    Code.ensure_loaded!(Kelvin.InOrderSubscription)
+    Kelvin.InOrderSubscription
+  end
+
   defp producer_module(:volley, _), do: Volley.InOrderSubscription
   defp producer_module(:dummy, _), do: Beeline.DummyProducer
 
