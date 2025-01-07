@@ -45,7 +45,7 @@ defmodule Beeline.MixProject do
   defp deps do
     [
       {:gen_stage, "~> 1.0"},
-      {:nimble_options, "~> 0.1"},
+      {:nimble_options, "~> 0.1 or ~> 1.0"},
       {:jason, "~> 1.0"},
       {:telemetry, "~> 0.4 or ~> 1.0"},
       {:kelvin, "~> 0.4 or ~> 1.0", optional: true},
