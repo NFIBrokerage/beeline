@@ -2,13 +2,10 @@ name: Actions CI
 
 on: push
 
-env:
-  CUATRO_HEX_KEY: ${{ secrets.CUATRO_HEX_KEY }}
-
 jobs:
   bless:
     name: Bless
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
       MIX_ENV: test
       EVENTSTORE_TCP_HOST: localhost
@@ -76,12 +73,14 @@ jobs:
 
   publish-hex-package:
     name: Publish Hex Package ⬆️☁️
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     env:
       MIX_ENV: dev
     needs:
     - bless
+    permissions:
+      contents: write
 
     steps:
     - name: Checkout
@@ -144,26 +143,15 @@ jobs:
 
     - name: Create a GitHub Release
       id: create_release
-      uses: NFIBrokerage/create-release@v4
+      uses: elgohr/Github-Release-Action@v5
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ env.TAG }}
-        release_name: Release ${{ env.TAG }}
-        draft: false
+        tag: ${{ env.TAG }}
+        title: Release ${{ env.TAG }}
         prerelease: false
 
     - name: Publish library
       run: mix hex.publish --yes
       env:
         HEX_API_KEY: ${{ secrets.HEX_PUBLISH_KEY }}
-
-    - name: Notify ops channel of build success
-      run: >
-        curl
-        -X POST
-        -H 'Content-type:application/json'
-        -d "{\"text\":\":hexpm: package published for $REPOSITORY $(git tag -ln $TAG)\"}"
-        $SLACK_WEBHOOK
-      env:
-        SLACK_WEBHOOK: ${{ secrets.OPS_CHANNEL_SLACK_WEBHOOK }}
