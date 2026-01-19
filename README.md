@@ -1,6 +1,6 @@
 # Beeline
 
-![Actions CI](https://github.com/NFIBrokerage/beeline/workflows/Actions%20CI/badge.svg)
+![Actions CI](https://github.com/CuatroElixir/beeline/workflows/Actions%20CI/badge.svg)
 
 a tool for building in-order GenStage topologies for EventStoreDB[^honeycomb-beelines]
 

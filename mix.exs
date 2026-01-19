@@ -1,7 +1,7 @@
 defmodule Beeline.MixProject do
   use Mix.Project
 
-  @source_url "https://github.com/NFIBrokerage/beeline"
+  @source_url "https://github.com/CuatroElixir/beeline"
   @version_file Path.join(__DIR__, ".version")
   @external_resource @version_file
   @version (case Regex.run(~r/^v([\d\.\w-]+)/, File.read!(@version_file),
